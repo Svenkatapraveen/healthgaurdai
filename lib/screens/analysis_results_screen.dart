@@ -168,17 +168,36 @@ class AnalysisResultsScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             // Route Navigation Buttons
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/report', arguments: assessment);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.primaryTeal, AppColors.primaryBlue],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryTeal.withOpacity(0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
               ),
-              child: const Text('Generate Medical PDF Report', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/report', arguments: assessment);
+                },
+                icon: const Icon(Icons.picture_as_pdf_rounded, color: Colors.white),
+                label: const Text('Generate Premium PDF Report', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
             ),
             const SizedBox(height: 12),
             

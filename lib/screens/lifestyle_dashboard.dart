@@ -134,7 +134,7 @@ class _LifestyleDashboardState extends State<LifestyleDashboard> {
                 _buildLogCard(
                   isDark,
                   title: 'Steps Walked',
-                  value: '$_stepsWalked / 10000',
+                  value: '$_stepsWalked / 10000\n($_caloriesBurned kcal)',
                   icon: Icons.directions_walk,
                   color: Colors.orangeAccent,
                   buttonText: 'Add 1k Steps',

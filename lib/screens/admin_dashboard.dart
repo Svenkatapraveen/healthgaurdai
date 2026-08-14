@@ -4,7 +4,6 @@ import '../widgets/glass_card.dart';
 import '../widgets/custom_chart.dart';
 import '../state/app_state.dart';
 import '../services/db_service.dart';
-import '../services/auth_service.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({Key? key}) : super(key: key);

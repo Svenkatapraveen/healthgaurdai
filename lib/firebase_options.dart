@@ -15,15 +15,9 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macOS - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -37,28 +31,44 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'MOCK_API_KEY_WEB',
-    appId: '1:103015925046:web:103015925046',
-    messagingSenderId: '103015925046',
-    projectId: 'health-gaurd-ai',
-    authDomain: 'health-gaurd-ai.firebaseapp.com',
-    storageBucket: 'health-gaurd-ai.appspot.com',
+    apiKey: 'AIzaSyC4nvV2Z0CDydQLzwYi8gLjyIQAfKAk5A8',
+    appId: '1:125323774503:web:befeaebf7fddd90182dc02',
+    messagingSenderId: '125323774503',
+    projectId: 'health-ai-c2308',
+    authDomain: 'health-ai-c2308.firebaseapp.com',
+    storageBucket: 'health-ai-c2308.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'MOCK_API_KEY_ANDROID',
-    appId: '1:103015925046:android:103015925046',
-    messagingSenderId: '103015925046',
-    projectId: 'health-gaurd-ai',
-    storageBucket: 'health-gaurd-ai.appspot.com',
+    apiKey: 'AIzaSyBBIyxO4QJ2Ns6tEv-gs0kTO_VyzEmHX0k',
+    appId: '1:125323774503:android:8412a948969f0dbb82dc02',
+    messagingSenderId: '125323774503',
+    projectId: 'health-ai-c2308',
+    storageBucket: 'health-ai-c2308.firebasestorage.app',
+  );
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyAyvDTzU0cVlgFJ8y2PKS7Bdbl75i0YXWI',
+    appId: '1:125323774503:ios:a71ef5d3c630131782dc02',
+    messagingSenderId: '125323774503',
+    projectId: 'health-ai-c2308',
+    storageBucket: 'health-ai-c2308.firebasestorage.app',
+    iosBundleId: 'com.example.flutterApplication1healthgaurdai',
+  );
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyAyvDTzU0cVlgFJ8y2PKS7Bdbl75i0YXWI',
+    appId: '1:125323774503:ios:a71ef5d3c630131782dc02',
+    messagingSenderId: '125323774503',
+    projectId: 'health-ai-c2308',
+    storageBucket: 'health-ai-c2308.firebasestorage.app',
+    iosBundleId: 'com.example.flutterApplication1healthgaurdai',
   );
 
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'MOCK_API_KEY_IOS',
-    appId: '1:103015925046:ios:103015925046',
-    messagingSenderId: '103015925046',
-    projectId: 'health-gaurd-ai',
-    storageBucket: 'health-gaurd-ai.appspot.com',
-    iosBundleId: 'com.example.healthguard',
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyC4nvV2Z0CDydQLzwYi8gLjyIQAfKAk5A8',
+    appId: '1:125323774503:web:0d4c7ff0d29eab9482dc02',
+    messagingSenderId: '125323774503',
+    projectId: 'health-ai-c2308',
+    authDomain: 'health-ai-c2308.firebaseapp.com',
+    storageBucket: 'health-ai-c2308.firebasestorage.app',
   );
 }

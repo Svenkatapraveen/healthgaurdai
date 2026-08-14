@@ -46,8 +46,6 @@ class _MyAppState extends State<MyApp> {
       child: AnimatedBuilder(
         animation: _appState,
         builder: (context, child) {
-          final isDark = _appState.isDarkMode;
-          
           return MaterialApp(
             title: 'HealthGuard AI',
             debugShowCheckedModeBanner: false,

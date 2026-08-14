@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/db_service.dart';
+import '../services/firebase_auth_service.dart';
+import '../services/firebase_db_service.dart';
 
 class AppState extends ChangeNotifier {
-  final AuthService _authService = MockAuthService();
-  final DatabaseService _dbService = MockDbService();
+  final AuthService _authService = FirebaseAuthService();
+  final DatabaseService _dbService = FirebaseDbService();
 
   AppUser? _currentUser;
   bool _isLoading = false;
@@ -89,7 +91,8 @@ class AppState extends ChangeNotifier {
         password: password,
       );
       if (user != null) {
-        // Do NOT automatically log in the user upon registration
+        _currentUser = user;
+        await reloadUserData();
         setLoading(false);
         return true;
       }

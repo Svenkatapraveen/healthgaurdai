@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../widgets/glass_card.dart';
 import '../state/app_state.dart';
-import '../services/db_service.dart';
 
 class HealthHistoryScreen extends StatefulWidget {
   const HealthHistoryScreen({Key? key}) : super(key: key);

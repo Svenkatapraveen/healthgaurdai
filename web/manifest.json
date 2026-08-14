@@ -1,6 +1,6 @@
 {
-    "name": "flutter_application_1healthgaurdai",
-    "short_name": "flutter_application_1healthgaurdai",
+    "name": "HealthGuard AI",
+    "short_name": "HealthGuard AI",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

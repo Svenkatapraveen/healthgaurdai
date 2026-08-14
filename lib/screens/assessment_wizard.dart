@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
-import '../widgets/glass_card.dart';
 import '../state/app_state.dart';
 import '../services/db_service.dart';
 
@@ -571,6 +570,7 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
         'duration': _duration,
         'pattern': _pattern,
         'followUpAnswers': _followUpAnswers,
+        'recommendedDoctor': recommendedDoctor,
       },
       associatedSymptoms: [],
       medicalHistory: _selectedHistory.toList(),

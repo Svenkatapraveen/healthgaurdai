@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../widgets/glass_card.dart';
 import '../state/app_state.dart';
-import '../services/db_service.dart';
 
 // ==========================================
 // BACKGROUND TEMPLATE WIDGET
@@ -83,15 +82,22 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.text,
         _passwordController.text,
       );
-      if (success) {
-        if (state.currentUser!.isAdmin) {
-          Navigator.pushReplacementNamed(context, '/admin-dashboard');
-        } else {
-          Navigator.pushReplacementNamed(context, '/dashboard');
-        }
+      if (success && context.mounted) {
+        _showPremiumSuccessDialog(
+          context,
+          'Login Successful',
+          'Welcome back to HealthGuard AI!',
+          () {
+            if (state.currentUser!.isAdmin) {
+              Navigator.pushReplacementNamed(context, '/admin-dashboard');
+            } else {
+              Navigator.pushReplacementNamed(context, '/dashboard');
+            }
+          }
+        );
       }
     } catch (e) {
-      _showErrorDialog(e.toString().replaceAll('Exception: ', ''));
+      if (context.mounted) _showErrorDialog(e.toString().replaceAll('Exception: ', ''));
     }
   }
 
@@ -316,17 +322,63 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 18),
 
                       // Google login shortcut
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          _showGoogleAccountSelector(context, state);
+                      ElevatedButton(
+                        onPressed: () async {
+                          final ok = await state.loginWithGoogle();
+                          if (ok && context.mounted) {
+                            if (state.currentUser!.isAdmin) {
+                              Navigator.pushReplacementNamed(context, '/admin-dashboard');
+                            } else {
+                              Navigator.pushReplacementNamed(context, '/dashboard');
+                            }
+                          } else if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Google Sign-In failed or was canceled.')),
+                            );
+                          }
                         },
-                        icon: const Icon(Icons.g_mobiledata, color: Colors.blueAccent, size: 26),
-                        label: const Text('Continue with Google', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold)),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          side: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade300),
-                          foregroundColor: AppColors.getTextPrimary(isDark),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDark ? const Color(0xFF4285F4) : Colors.white,
+                          foregroundColor: isDark ? Colors.white : Colors.black87,
+                          elevation: 1,
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(
+                              color: isDark ? Colors.transparent : Colors.grey.withOpacity(0.3),
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'G',
+                                style: TextStyle(
+                                  color: Color(0xFF4285F4),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Sign in with Google',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -359,229 +411,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _showGoogleAccountSelector(BuildContext context, AppState state) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: AppColors.getSurface(isDark),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
-            ),
-          ),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white24 : Colors.black12,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.g_mobiledata, color: Colors.blueAccent, size: 36),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Sign in with Google',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.getTextPrimary(isDark),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Choose an account to continue to HealthGuard AI',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.getTextSecondary(isDark),
-                ),
-              ),
-              const SizedBox(height: 24),
-              
-              _buildAccountTile(
-                context,
-                state,
-                name: 'Alex Carter',
-                email: 'user@gmail.com',
-                avatarInitial: 'A',
-                avatarColor: Colors.blue,
-              ),
-              const Divider(height: 1),
-              _buildAccountTile(
-                context,
-                state,
-                name: 'Dr. Sarah Connor',
-                email: 'admin@gmail.com',
-                avatarInitial: 'S',
-                avatarColor: Colors.teal,
-              ),
-              const Divider(height: 1),
-              _buildAccountTile(
-                context,
-                state,
-                name: 'Google Patient',
-                email: 'new.google.user@gmail.com',
-                avatarInitial: 'G',
-                avatarColor: Colors.purple,
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: isDark ? Colors.white12 : Colors.grey[200],
-                  child: Icon(Icons.person_add_alt_1_outlined, color: AppColors.getTextPrimary(isDark)),
-                ),
-                title: Text(
-                  'Use another account',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.getTextPrimary(isDark),
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showAddGoogleAccountDialog(context, state);
-                },
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        );
-      },
-    );
-  }
 
-  Widget _buildAccountTile(
-    BuildContext context,
-    AppState state, {
-    required String name,
-    required String email,
-    required String avatarInitial,
-    required Color avatarColor,
-  }) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: avatarColor.withOpacity(0.2),
-        child: Text(
-          avatarInitial,
-          style: TextStyle(color: avatarColor, fontWeight: FontWeight.bold),
-        ),
-      ),
-      title: Text(
-        name,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          color: AppColors.getTextPrimary(isDark),
-        ),
-      ),
-      subtitle: Text(
-        email,
-        style: TextStyle(
-          fontSize: 12,
-          color: AppColors.getTextSecondary(isDark),
-        ),
-      ),
-      onTap: () async {
-        Navigator.pop(context);
-        final ok = await state.loginWithGoogle(email: email, displayName: name);
-        if (ok) {
-          if (state.currentUser!.isAdmin) {
-            Navigator.pushReplacementNamed(context, '/admin-dashboard');
-          } else {
-            Navigator.pushReplacementNamed(context, '/dashboard');
-          }
-        }
-      },
-    );
-  }
-
-  void _showAddGoogleAccountDialog(BuildContext context, AppState state) {
-    final emailController = TextEditingController();
-    final nameController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        final bool isDark = Theme.of(context).brightness == Brightness.dark;
-        return AlertDialog(
-          backgroundColor: AppColors.getSurface(isDark),
-          title: const Text('Add Google Account'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Display Name',
-                    hintText: 'John Doe',
-                  ),
-                  validator: (val) => val != null && val.isNotEmpty ? null : 'Enter name.',
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Google Email',
-                    hintText: 'john.doe@gmail.com',
-                  ),
-                  validator: (val) => val != null && val.contains('@') ? null : 'Enter valid email.',
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryTeal),
-              onPressed: () async {
-                if (!formKey.currentState!.validate()) return;
-                Navigator.pop(context);
-                final ok = await state.loginWithGoogle(
-                  email: emailController.text.trim(),
-                  displayName: nameController.text.trim(),
-                );
-                if (ok) {
-                  if (state.currentUser!.isAdmin) {
-                    Navigator.pushReplacementNamed(context, '/admin-dashboard');
-                  } else {
-                    Navigator.pushReplacementNamed(context, '/dashboard');
-                  }
-                }
-              },
-              child: const Text('Sign In', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
-  }
 }
 
 // ==========================================
@@ -625,31 +455,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
         gender: _gender,
         password: _passwordController.text,
       );
-      if (success) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            backgroundColor: AppColors.getSurface(Theme.of(context).brightness == Brightness.dark),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: const Text('Email Verification Sent', style: TextStyle(fontWeight: FontWeight.bold)),
-            content: const Text(
-              'A verification link has been sent to your email address. Please click on the link to verify your profile before checking full analytics features.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context); // close dialog
-                  Navigator.pushReplacementNamed(context, '/login');
-                },
-                child: const Text('OK', style: TextStyle(color: AppColors.primaryTeal, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-        );
+      if (success && context.mounted) {
+        await state.logout();
+        if (context.mounted) {
+          _showPremiumSuccessDialog(
+            context,
+            'Registration Successful!',
+            'Your secure account has been created. Please log in.',
+            () {
+              Navigator.pushReplacementNamed(context, '/login');
+            }
+          );
+        }
       }
     } catch (e) {
-      _showErrorDialog(e.toString().replaceAll('Exception: ', ''));
+      if (context.mounted) _showErrorDialog(e.toString().replaceAll('Exception: ', ''));
     }
   }
 
@@ -1495,4 +1315,95 @@ class _AdminForgotPasswordScreenState extends State<AdminForgotPasswordScreen> {
       ),
     );
   }
+}
+
+// ----------------------------------------------------------------------
+// Premium Success Dialog Helper
+// ----------------------------------------------------------------------
+void _showPremiumSuccessDialog(BuildContext context, String title, String message, VoidCallback onComplete) {
+  final bool isDark = Theme.of(context).brightness == Brightness.dark;
+  
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      Future.delayed(const Duration(milliseconds: 1800), () {
+        if (context.mounted) {
+          Navigator.pop(context); // close dialog
+          onComplete();
+        }
+      });
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Center(
+          child: TweenAnimationBuilder(
+            duration: const Duration(milliseconds: 600),
+            tween: Tween<double>(begin: 0.5, end: 1.0),
+            curve: Curves.elasticOut,
+            builder: (context, double scale, child) {
+              return Transform.scale(
+                scale: scale,
+                child: Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppColors.getSurface(isDark), AppColors.getSurface(isDark).withOpacity(0.95)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryTeal.withOpacity(0.3),
+                        blurRadius: 24,
+                        spreadRadius: 4,
+                      ),
+                    ],
+                    border: Border.all(color: AppColors.primaryTeal.withOpacity(0.5), width: 1.5),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryTeal.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check_circle_rounded,
+                          color: AppColors.primaryTeal,
+                          size: 64,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.getTextPrimary(isDark),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        message,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.getTextSecondary(isDark),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    },
+  );
 }

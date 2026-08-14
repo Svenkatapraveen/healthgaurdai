@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
-import '../widgets/glass_card.dart';
 import '../state/app_state.dart';
 import '../services/db_service.dart';
+import '../services/auth_service.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 class PdfReportScreen extends StatefulWidget {
   const PdfReportScreen({Key? key}) : super(key: key);
@@ -15,38 +18,57 @@ class _PdfReportScreenState extends State<PdfReportScreen> {
   bool _isDownloading = false;
   double _downloadProgress = 0.0;
 
-  void _downloadReport() async {
+  void _downloadReport(AssessmentModel assessment, AppUser? user) async {
     setState(() {
       _isDownloading = true;
-      _downloadProgress = 0.0;
+      _downloadProgress = 0.2;
     });
 
-    for (int i = 0; i <= 10; i++) {
-      await Future.delayed(const Duration(milliseconds: 150));
-      setState(() {
-        _downloadProgress = i / 10.0;
-      });
-    }
+    final pdf = pw.Document();
 
-    setState(() {
-      _isDownloading = false;
-    });
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Download Completed'),
-        content: const Text(
-          'HealthGuard_AI_Medical_Report.pdf has been stored successfully in your device\'s local storage.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          )
-        ],
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Header(
+                level: 0,
+                child: pw.Text('HealthGuard AI - Medical Report', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+              ),
+              pw.SizedBox(height: 20),
+              pw.Text('Patient Name: ${user?.fullName ?? 'Unknown'}', style: const pw.TextStyle(fontSize: 16)),
+              pw.Text('Email: ${user?.email ?? 'Unknown'}', style: const pw.TextStyle(fontSize: 16)),
+              pw.SizedBox(height: 20),
+              pw.Text('Primary Symptoms:', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              pw.Text(assessment.primarySymptoms.join(', ')),
+              pw.SizedBox(height: 10),
+              pw.Text('Overall Risk Score: ${(assessment.overallRiskScore * 100).toStringAsFixed(0)}% (${assessment.riskCategory})', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 20),
+              pw.Text('AI Clinical Summary:', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              pw.Text(assessment.clinicalSummary),
+              pw.SizedBox(height: 20),
+              pw.Text('Recommendations:', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              ...assessment.recommendations.map((r) => pw.Bullet(text: r)).toList(),
+            ],
+          );
+        },
       ),
     );
+
+    setState(() => _downloadProgress = 0.8);
+    
+    // This will trigger a file save dialog on web or desktop, and a share sheet on mobile.
+    await Printing.sharePdf(
+      bytes: await pdf.save(),
+      filename: 'HealthGuard_AI_Medical_Report.pdf',
+    );
+
+    setState(() {
+      _downloadProgress = 1.0;
+      _isDownloading = false;
+    });
   }
 
   void _shareReport() {
@@ -123,14 +145,43 @@ class _PdfReportScreenState extends State<PdfReportScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isDownloading ? null : _downloadReport,
-                    icon: const Icon(Icons.download),
-                    label: const Text('Download PDF'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryTeal,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: _isDownloading 
+                            ? [Colors.grey.shade400, Colors.grey.shade500] 
+                            : [AppColors.primaryTeal, AppColors.primaryBlue],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        if (!_isDownloading)
+                          BoxShadow(
+                            color: AppColors.primaryTeal.withOpacity(0.4),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                      ],
+                    ),
+                    child: ElevatedButton.icon(
+                      onPressed: _isDownloading ? null : () => _downloadReport(assessment, user),
+                      icon: _isDownloading
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Icon(Icons.file_download_rounded, color: Colors.white),
+                      label: Text(
+                        _isDownloading ? 'Downloading...' : 'Download Premium PDF',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        disabledForegroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
                     ),
                   ),
                 ),
@@ -154,15 +205,44 @@ class _PdfReportScreenState extends State<PdfReportScreen> {
           if (_isDownloading)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-              child: Column(
-                children: [
-                  LinearProgressIndicator(value: _downloadProgress, color: AppColors.primaryTeal),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Generating PDF Report... ${(_downloadProgress * 100).toStringAsFixed(0)}%',
-                    style: const TextStyle(fontSize: 11),
-                  ),
-                ],
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.lightSurface,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                  ],
+                  border: Border.all(color: AppColors.primaryTeal.withOpacity(0.3)),
+                ),
+                child: Column(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: _downloadProgress, 
+                        color: AppColors.primaryTeal,
+                        backgroundColor: AppColors.primaryTeal.withOpacity(0.1),
+                        minHeight: 8,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Generating Premium Report...',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primaryTeal),
+                        ),
+                        Text(
+                          '${(_downloadProgress * 100).toStringAsFixed(0)}%',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
 

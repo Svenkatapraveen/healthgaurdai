@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
-import '../widgets/glass_card.dart';
 
 class EmergencyAlertScreen extends StatefulWidget {
   const EmergencyAlertScreen({Key? key}) : super(key: key);
@@ -89,8 +88,6 @@ class _EmergencyAlertScreenState extends State<EmergencyAlertScreen> with Single
 
   @override
   Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       backgroundColor: const Color(0xFF1E0A0A), // Red-themed dark background
       appBar: AppBar(
