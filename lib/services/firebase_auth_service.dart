@@ -105,22 +105,25 @@ class FirebaseAuthService implements AuthService {
   @override
   Future<AppUser?> signInWithGoogle({String? email, String? displayName}) async {
     try {
-      // NOTE: For Google Sign-In to work on Flutter Web, you MUST provide a Web Client ID.
-      // You can find this in your Firebase Console -> Authentication -> Settings -> Web Client ID
-      // or in Google Cloud Console under Credentials.
-      // Replace the string below with your actual Web Client ID ending in apps.googleusercontent.com
-      final GoogleSignInAccount? googleUser = await GoogleSignIn(
-        clientId: kIsWeb ? '125323774503-qnq955u6l6oosuocnidvrq0akuk5cblq.apps.googleusercontent.com' : null,
-      ).signIn();
-      if (googleUser == null) return null; // User canceled the sign-in
+      UserCredential userCredential;
+      if (kIsWeb) {
+        GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        googleProvider.addScope('email');
+        googleProvider.addScope('profile');
+        userCredential = await _auth.signInWithPopup(googleProvider);
+      } else {
+        final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+        if (googleUser == null) return null; // User canceled the sign-in
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final AuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
 
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+        userCredential = await _auth.signInWithCredential(credential);
+      }
+
       final User? fbUser = userCredential.user;
 
       if (fbUser != null) {

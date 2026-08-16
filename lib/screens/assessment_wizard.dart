@@ -22,7 +22,7 @@ class MedicalSymptom {
 }
 
 const List<MedicalSymptom> symptomDatabase = [
-  // Neurology
+  // ==================== HEAD ====================
   MedicalSymptom(
     name: 'Headache',
     category: 'Neurological Symptoms',
@@ -69,8 +69,252 @@ const List<MedicalSymptom> symptomDatabase = [
       'What is the main issue?': ['Falling asleep', 'Staying asleep', 'Waking up too early'],
     },
   ),
+  MedicalSymptom(
+    name: 'Confusion / Brain Fog',
+    category: 'Neurological Symptoms',
+    bodyLocations: ['Head'],
+    followUpQuestions: {
+      'Did this symptom start suddenly?': ['Yes', 'No'],
+      'Is it accompanied by fever or severe headache?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Toothache',
+    category: 'General Symptoms',
+    bodyLocations: ['Head'],
+    followUpQuestions: {
+      'Is it sensitive to hot or cold?': ['Hot and cold', 'Hot only', 'Cold only', 'Neither'],
+      'Is there visible facial swelling?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Jaw Pain / TMJ',
+    category: 'Pain Symptoms',
+    bodyLocations: ['Head', 'Neck'],
+    followUpQuestions: {
+      'Does your jaw click or pop when opening?': ['Yes', 'No'],
+      'Is pain worse when chewing?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Scalp Tenderness',
+    category: 'Skin Symptoms',
+    bodyLocations: ['Head'],
+    followUpQuestions: {
+      'Is there visible redness or flaking?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Hair Loss',
+    category: 'Skin Symptoms',
+    bodyLocations: ['Head'],
+    followUpQuestions: {
+      'Is the hair thinning or falling out in patches?': ['Thinning', 'Patches', 'All over'],
+    },
+  ),
 
-  // Cardiology
+  // ==================== EYES ====================
+  MedicalSymptom(
+    name: 'Eye Pain',
+    category: 'ENT & Eye Symptoms',
+    bodyLocations: ['Eyes'],
+    followUpQuestions: {
+      'Is there redness or discharge?': ['Redness and discharge', 'Redness only', 'Discharge only', 'Neither'],
+      'Is your vision blurry?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Blurred Vision',
+    category: 'ENT & Eye Symptoms',
+    bodyLocations: ['Eyes'],
+    followUpQuestions: {
+      'Is the blurring in one eye or both eyes?': ['One eye', 'Both eyes'],
+      'Is it sudden or gradual?': ['Sudden', 'Gradual'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Red Eyes / Conjunctivitis',
+    category: 'ENT & Eye Symptoms',
+    bodyLocations: ['Eyes'],
+    followUpQuestions: {
+      'Is there yellow/green discharge or crusting?': ['Yes', 'No'],
+      'Are your eyes itchy or gritty?': ['Itchy', 'Gritty', 'Both', 'Neither'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Watery / Itchy Eyes',
+    category: 'ENT & Eye Symptoms',
+    bodyLocations: ['Eyes'],
+    followUpQuestions: {
+      'Do you have seasonal allergies or sneezing?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Double Vision',
+    category: 'ENT & Eye Symptoms',
+    bodyLocations: ['Eyes'],
+    followUpQuestions: {
+      'Does double vision persist when one eye is covered?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Sensitivity to Light (Photophobia)',
+    category: 'ENT & Eye Symptoms',
+    bodyLocations: ['Eyes', 'Head'],
+    followUpQuestions: {
+      'Is it accompanied by a severe headache or eye pain?': ['Yes', 'No'],
+    },
+  ),
+
+  // ==================== EARS ====================
+  MedicalSymptom(
+    name: 'Ear Pain',
+    category: 'ENT & Eye Symptoms',
+    bodyLocations: ['Ears'],
+    followUpQuestions: {
+      'Is there any fluid draining from the ear?': ['Yes', 'No'],
+      'Is your hearing reduced?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Tinnitus (Ringing in Ears)',
+    category: 'ENT & Eye Symptoms',
+    bodyLocations: ['Ears'],
+    followUpQuestions: {
+      'Is the ringing continuous or constant?': ['Continuous', 'Intermittent'],
+      'Is it in one ear or both?': ['One ear', 'Both ears'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Ear Discharge',
+    category: 'ENT & Eye Symptoms',
+    bodyLocations: ['Ears'],
+    followUpQuestions: {
+      'What type of fluid is draining?': ['Clear liquid', 'Pus/Yellow', 'Bloody'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Hearing Loss',
+    category: 'ENT & Eye Symptoms',
+    bodyLocations: ['Ears'],
+    followUpQuestions: {
+      'Was the hearing loss sudden or gradual?': ['Sudden', 'Gradual'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Ear Fullness / Pressure',
+    category: 'ENT & Eye Symptoms',
+    bodyLocations: ['Ears'],
+    followUpQuestions: {
+      'Do you currently have a cold or sinus congestion?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Itchy Ears',
+    category: 'ENT & Eye Symptoms',
+    bodyLocations: ['Ears'],
+    followUpQuestions: {
+      'Have you recently used earplugs or swum in water?': ['Yes', 'No'],
+    },
+  ),
+
+  // ==================== NOSE ====================
+  MedicalSymptom(
+    name: 'Runny Nose (Rhinorrhea)',
+    category: 'ENT & Eye Symptoms',
+    bodyLocations: ['Nose'],
+    followUpQuestions: {
+      'Is the discharge clear, yellow, or green?': ['Clear', 'Yellow/Green'],
+      'How long has it been present?': ['1-3 days', '4-7 days', 'More than a week'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Nasal Congestion (Stuffy Nose)',
+    category: 'ENT & Eye Symptoms',
+    bodyLocations: ['Nose'],
+    followUpQuestions: {
+      'Does it alternate sides or affect both nostrils?': ['Alternates', 'Both nostrils'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Sneezing',
+    category: 'ENT & Eye Symptoms',
+    bodyLocations: ['Nose'],
+    followUpQuestions: {
+      'Are you experiencing itchy eyes or throat?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Loss of Smell (Anosmia)',
+    category: 'ENT & Eye Symptoms',
+    bodyLocations: ['Nose'],
+    followUpQuestions: {
+      'Did loss of taste occur as well?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Nosebleed (Epistaxis)',
+    category: 'ENT & Eye Symptoms',
+    bodyLocations: ['Nose'],
+    followUpQuestions: {
+      'How often does it occur?': ['First time', 'Occasional', 'Frequent'],
+      'Does bleeding stop within 10 minutes?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Sinus Pressure & Pain',
+    category: 'ENT & Eye Symptoms',
+    bodyLocations: ['Nose', 'Head'],
+    followUpQuestions: {
+      'Does bending forward worsen facial pressure?': ['Yes', 'No'],
+    },
+  ),
+
+  // ==================== NECK ====================
+  MedicalSymptom(
+    name: 'Neck Pain',
+    category: 'Pain Symptoms',
+    bodyLocations: ['Neck'],
+    followUpQuestions: {
+      'Does it limit your neck movement?': ['Yes, severely', 'Mildly', 'No'],
+      'Does pain radiate into your arms or shoulders?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Sore Throat',
+    category: 'Respiratory Symptoms',
+    bodyLocations: ['Neck'],
+    followUpQuestions: {
+      'Is swallowing painful?': ['Severely painful', 'Mildly uncomfortable', 'No'],
+      'Are white patches visible on tonsils?': ['Yes', 'No', 'Unsure'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Difficulty Swallowing (Dysphagia)',
+    category: 'Respiratory Symptoms',
+    bodyLocations: ['Neck'],
+    followUpQuestions: {
+      'Is difficulty with solids, liquids, or both?': ['Solids only', 'Liquids only', 'Both'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Swollen Lymph Nodes',
+    category: 'General Symptoms',
+    bodyLocations: ['Neck'],
+    followUpQuestions: {
+      'Are the lumps tender to touch?': ['Tender', 'Not tender'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Hoarseness / Voice Loss',
+    category: 'Respiratory Symptoms',
+    bodyLocations: ['Neck'],
+    followUpQuestions: {
+      'How long have you been hoarse?': ['A few days', 'Over 2 weeks'],
+    },
+  ),
+
+  // ==================== CHEST ====================
   MedicalSymptom(
     name: 'Chest Pain',
     category: 'Heart Symptoms',
@@ -90,8 +334,22 @@ const List<MedicalSymptom> symptomDatabase = [
       'Are they accompanied by dizziness or chest discomfort?': ['Yes', 'No'],
     },
   ),
-
-  // Pulmonology
+  MedicalSymptom(
+    name: 'Rapid Heartbeat (Tachycardia)',
+    category: 'Heart Symptoms',
+    bodyLocations: ['Chest'],
+    followUpQuestions: {
+      'Did it start suddenly while resting?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Chest Tightness',
+    category: 'Respiratory Symptoms',
+    bodyLocations: ['Chest'],
+    followUpQuestions: {
+      'Is it triggered by exercise, cold air, or allergens?': ['Yes', 'No'],
+    },
+  ),
   MedicalSymptom(
     name: 'Cough',
     category: 'Respiratory Symptoms',
@@ -121,7 +379,7 @@ const List<MedicalSymptom> symptomDatabase = [
     },
   ),
 
-  // Gastroenterology
+  // ==================== ABDOMEN ====================
   MedicalSymptom(
     name: 'Stomach Pain',
     category: 'Digestive Symptoms',
@@ -165,27 +423,282 @@ const List<MedicalSymptom> symptomDatabase = [
       'Are you able to keep fluids down?': ['Yes', 'No'],
     },
   ),
+  MedicalSymptom(
+    name: 'Diarrhea',
+    category: 'Digestive Symptoms',
+    bodyLocations: ['Abdomen'],
+    followUpQuestions: {
+      'How many watery stools per day?': ['1-3 times', '4-6 times', '7+ times'],
+      'Is there fever or severe abdominal pain?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Constipation',
+    category: 'Digestive Symptoms',
+    bodyLocations: ['Abdomen'],
+    followUpQuestions: {
+      'How many days since last bowel movement?': ['2-3 days', '4-6 days', '7+ days'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Heartburn / Acid Reflux',
+    category: 'Digestive Symptoms',
+    bodyLocations: ['Abdomen', 'Chest'],
+    followUpQuestions: {
+      'Is burning worse when lying down after meals?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Indigestion / Dyspepsia',
+    category: 'Digestive Symptoms',
+    bodyLocations: ['Abdomen'],
+    followUpQuestions: {
+      'Do you experience early fullness during meals?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Loss of Appetite',
+    category: 'Digestive Symptoms',
+    bodyLocations: ['Abdomen'],
+    followUpQuestions: {
+      'Have you lost weight unintentionally?': ['Yes', 'No'],
+    },
+  ),
 
-  // Dermatology
+  // ==================== ARMS ====================
+  MedicalSymptom(
+    name: 'Arm Pain',
+    category: 'Pain Symptoms',
+    bodyLocations: ['Arms'],
+    followUpQuestions: {
+      'Which arm is affected?': ['Left Arm', 'Right Arm', 'Both Arms'],
+      'Is the pain accompanied by chest pressure?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Numbness / Tingling in Arm',
+    category: 'Neurological Symptoms',
+    bodyLocations: ['Arms'],
+    followUpQuestions: {
+      'Is it constant or triggered by position?': ['Constant', 'Triggered by position'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Arm Weakness',
+    category: 'Neurological Symptoms',
+    bodyLocations: ['Arms'],
+    followUpQuestions: {
+      'Is the weakness in one arm or both?': ['One arm', 'Both arms'],
+      'Did it start suddenly?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Elbow / Wrist Joint Pain',
+    category: 'Pain Symptoms',
+    bodyLocations: ['Arms'],
+    followUpQuestions: {
+      'Is there joint swelling or redness?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Tremors / Hand Shaking',
+    category: 'Neurological Symptoms',
+    bodyLocations: ['Arms', 'Hands'],
+    followUpQuestions: {
+      'Do tremors occur at rest or during movement?': ['At rest', 'During movement'],
+    },
+  ),
+
+  // ==================== HANDS ====================
+  MedicalSymptom(
+    name: 'Hand Pain',
+    category: 'Pain Symptoms',
+    bodyLocations: ['Hands'],
+    followUpQuestions: {
+      'Is pain worse in the morning?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Finger Stiffness',
+    category: 'Pain Symptoms',
+    bodyLocations: ['Hands'],
+    followUpQuestions: {
+      'How long does morning stiffness last?': ['Less than 30 mins', 'Over an hour'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Numbness in Fingers (Carpal Tunnel)',
+    category: 'Neurological Symptoms',
+    bodyLocations: ['Hands'],
+    followUpQuestions: {
+      'Does it wake you up at night?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Cold Hands & Fingers',
+    category: 'General Symptoms',
+    bodyLocations: ['Hands'],
+    followUpQuestions: {
+      'Do fingers change color (white/blue) in cold?': ['Yes', 'No'],
+    },
+  ),
+
+  // ==================== LEGS ====================
+  MedicalSymptom(
+    name: 'Knee Pain',
+    category: 'Pain Symptoms',
+    bodyLocations: ['Legs'],
+    followUpQuestions: {
+      'Is there swelling or stiffness?': ['Swelling and stiffness', 'Swelling only', 'Stiffness only', 'Neither'],
+      'Is pain worse when climbing stairs?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Leg Cramps / Muscle Spasms',
+    category: 'Pain Symptoms',
+    bodyLocations: ['Legs'],
+    followUpQuestions: {
+      'Do cramps occur mainly at night?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Leg Swelling (Edema)',
+    category: 'General Symptoms',
+    bodyLocations: ['Legs'],
+    followUpQuestions: {
+      'Is swelling in one leg or both legs?': ['One leg', 'Both legs'],
+      'Is there redness or localized heat?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Calf Pain / Soreness',
+    category: 'Pain Symptoms',
+    bodyLocations: ['Legs'],
+    followUpQuestions: {
+      'Is there swelling, heat, or deep pain in the calf?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Numbness / Tingling in Legs',
+    category: 'Neurological Symptoms',
+    bodyLocations: ['Legs'],
+    followUpQuestions: {
+      'Does pain radiate from lower back down the leg (Sciatica)?': ['Yes', 'No'],
+    },
+  ),
+
+  // ==================== FEET ====================
+  MedicalSymptom(
+    name: 'Foot Pain',
+    category: 'Pain Symptoms',
+    bodyLocations: ['Feet'],
+    followUpQuestions: {
+      'Is pain in the arch, heel, or toes?': ['Arch', 'Heel', 'Toes', 'Entire Foot'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Heel Pain (Plantar Fasciitis)',
+    category: 'Pain Symptoms',
+    bodyLocations: ['Feet'],
+    followUpQuestions: {
+      'Is pain worst during first steps in the morning?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Swollen Feet & Ankles',
+    category: 'General Symptoms',
+    bodyLocations: ['Feet', 'Legs'],
+    followUpQuestions: {
+      'Does swelling improve after elevating legs?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Cold Feet & Toes',
+    category: 'General Symptoms',
+    bodyLocations: ['Feet'],
+    followUpQuestions: {
+      'Do you have a diagnosis of peripheral artery disease or diabetes?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Tingling / Burning in Toes (Neuropathy)',
+    category: 'Neurological Symptoms',
+    bodyLocations: ['Feet'],
+    followUpQuestions: {
+      'Is burning sensation worse at night?': ['Yes', 'No'],
+    },
+  ),
+
+  // ==================== BACK ====================
+  MedicalSymptom(
+    name: 'Back Pain',
+    category: 'Pain Symptoms',
+    bodyLocations: ['Back'],
+    followUpQuestions: {
+      'Where is the pain?': ['Upper Back', 'Mid Back', 'Lower Back'],
+      'Does the pain travel down your leg?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Upper Back Pain',
+    category: 'Pain Symptoms',
+    bodyLocations: ['Back', 'Neck'],
+    followUpQuestions: {
+      'Is pain posture-related or after lifting heavy objects?': ['Posture', 'Lifting', 'Both'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Lower Back Pain (Lumbago)',
+    category: 'Pain Symptoms',
+    bodyLocations: ['Back'],
+    followUpQuestions: {
+      'Does pain worsen with bending or sitting?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Back Muscle Spasms',
+    category: 'Pain Symptoms',
+    bodyLocations: ['Back'],
+    followUpQuestions: {
+      'Does spasm lock your movement?': ['Yes', 'No'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Spinal Stiffness',
+    category: 'Pain Symptoms',
+    bodyLocations: ['Back'],
+    followUpQuestions: {
+      'Does morning stiffness take longer than 45 minutes to ease up?': ['Yes', 'No'],
+    },
+  ),
+
+  // ==================== SYSTEMIC & MULTI-LOCATION ====================
+  MedicalSymptom(
+    name: 'Fever',
+    category: 'General Symptoms',
+    bodyLocations: ['Head', 'Chest', 'Abdomen', 'Legs', 'Arms', 'Neck', 'Ears', 'Nose'],
+    followUpQuestions: {
+      'What is your approximate temperature?': ['Low grade (< 100.4°F)', 'High grade (100.4°F - 103°F)', 'Severe (> 103°F)', 'Not measured'],
+      'Are you experiencing chills or sweating?': ['Chills only', 'Sweating only', 'Both', 'Neither'],
+    },
+  ),
+  MedicalSymptom(
+    name: 'Fatigue',
+    category: 'General Symptoms',
+    bodyLocations: ['Head', 'Legs', 'Arms', 'Chest', 'Abdomen'],
+    followUpQuestions: {
+      'How long have you felt abnormally tired?': ['A few days', '1-2 weeks', 'More than a month'],
+    },
+  ),
   MedicalSymptom(
     name: 'Skin Rash',
     category: 'Skin Symptoms',
-    bodyLocations: ['Arms', 'Hands', 'Legs', 'Feet', 'Abdomen', 'Chest', 'Neck'],
+    bodyLocations: ['Arms', 'Hands', 'Legs', 'Feet', 'Abdomen', 'Chest', 'Neck', 'Head', 'Back'],
     followUpQuestions: {
       'Is the rash itchy?': ['Extremely itchy', 'Mildly itchy', 'Not itchy'],
       'Is it raised or flat?': ['Raised bumps', 'Flat spots', 'Blisters'],
     },
   ),
-  MedicalSymptom(
-    name: 'Hair Loss',
-    category: 'Skin Symptoms',
-    bodyLocations: ['Head'],
-    followUpQuestions: {
-      'Is the hair thinning or falling out in patches?': ['Thinning', 'Patches', 'All over'],
-    },
-  ),
-
-  // Psychiatry
   MedicalSymptom(
     name: 'Anxiety',
     category: 'Mental Health Symptoms',
@@ -200,80 +713,6 @@ const List<MedicalSymptom> symptomDatabase = [
     bodyLocations: ['Head'],
     followUpQuestions: {
       'Have you lost interest in activities you normally enjoy?': ['Yes', 'No'],
-    },
-  ),
-
-  // Ophthalmology / ENT
-  MedicalSymptom(
-    name: 'Eye Pain',
-    category: 'General Symptoms',
-    bodyLocations: ['Eyes'],
-    followUpQuestions: {
-      'Is there redness or discharge?': ['Redness and discharge', 'Redness only', 'Discharge only', 'Neither'],
-      'Is your vision blurry?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Ear Pain',
-    category: 'General Symptoms',
-    bodyLocations: ['Ears'],
-    followUpQuestions: {
-      'Is there any fluid draining from the ear?': ['Yes', 'No'],
-      'Is your hearing reduced?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Toothache',
-    category: 'General Symptoms',
-    bodyLocations: ['Head'],
-    followUpQuestions: {
-      'Is it sensitive to hot or cold?': ['Hot and cold', 'Hot only', 'Cold only', 'Neither'],
-    },
-  ),
-
-  // Orthopedics
-  MedicalSymptom(
-    name: 'Back Pain',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Back'],
-    followUpQuestions: {
-      'Where is the pain?': ['Upper Back', 'Mid Back', 'Lower Back'],
-      'Does the pain travel down your leg?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Knee Pain',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Legs'],
-    followUpQuestions: {
-      'Is there swelling or stiffness?': ['Swelling and stiffness', 'Swelling only', 'Stiffness only', 'Neither'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Neck Pain',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Neck'],
-    followUpQuestions: {
-      'Does it limit your neck movement?': ['Yes, severely', 'Mildly', 'No'],
-    },
-  ),
-
-  // General Medicine
-  MedicalSymptom(
-    name: 'Fever',
-    category: 'General Symptoms',
-    bodyLocations: ['Head', 'Chest', 'Abdomen', 'Legs', 'Arms'],
-    followUpQuestions: {
-      'What is your approximate temperature?': ['Low grade (< 100.4°F)', 'High grade (100.4°F - 103°F)', 'Severe (> 103°F)', 'Not measured'],
-      'Are you experiencing chills or sweating?': ['Chills only', 'Sweating only', 'Both', 'Neither'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Fatigue',
-    category: 'General Symptoms',
-    bodyLocations: ['Head', 'Legs', 'Arms'],
-    followUpQuestions: {
-      'How long have you felt abnormally tired?': ['A few days', '1-2 weeks', 'More than a month'],
     },
   ),
 ];
@@ -322,7 +761,7 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
 
   final List<String> _historyOptions = [
     'Diabetes',
-    'Hypertension',
+'Hypertension',
     'Asthma',
     'Heart Disease',
     'Kidney Disease',
@@ -339,6 +778,7 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
     'Neurological Symptoms',
     'Skin Symptoms',
     'Mental Health Symptoms',
+    'ENT & Eye Symptoms',
   ];
 
   @override
@@ -379,14 +819,11 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
       for (var s in _selectedPrimary) {
         final dbSymptom = symptomDatabase.firstWhere((element) => element.name == s, 
             orElse: () => const MedicalSymptom(name: '', category: '', bodyLocations: [], followUpQuestions: {}));
-        
-        if (dbSymptom.name.isNotEmpty) {
-          for (var q in dbSymptom.followUpQuestions.keys) {
-            if (_followUpAnswers[s]?[q] == null) {
-              allAnswered = false;
-              break;
-            }
-          }
+        final qMap = dbSymptom.followUpQuestions;
+        final ansMap = _followUpAnswers[s] ?? {};
+        if (ansMap.length < qMap.length) {
+          allAnswered = false;
+          break;
         }
       }
 
@@ -406,15 +843,10 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
     }
   }
 
-  void _submit() async {
+  Future<void> _submit() async {
     final state = AppStateProvider.of(context);
-    
-    // ----------------------------------------------------
-    // AI CLINICAL ENGINE SCORE CALCULATIONS
-    // ----------------------------------------------------
-    double riskScore = 15.0; // Base baseline risk
-    
-    // Calculate based on primary symptoms severity and classifications
+    double riskScore = 15.0;
+
     if (_selectedPrimary.contains('Chest Pain') || _selectedPrimary.contains('Shortness of Breath')) {
       riskScore += 35.0;
       // Radating chest pain is high risk
@@ -745,18 +1177,34 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
   // STEP 1: SEARCH, CATEGORIES, & BODY SELECTOR
   // ==========================================
   Widget _buildStep1(bool isDark) {
-    // Filter symptoms based on search text, selected body part, and selected category
+    final String q = _searchQuery.trim().toLowerCase();
+
+    // Universal search & location/category filtering
     final List<MedicalSymptom> filteredSymptoms = symptomDatabase.where((s) {
-      final matchesSearch = s.name.toLowerCase().contains(_searchQuery);
-      final matchesLocation = _selectedLocation == null || s.bodyLocations.contains(_selectedLocation);
-      final matchesCategory = _selectedCategory == 'All' || s.category == _selectedCategory;
-      return matchesSearch && matchesLocation && matchesCategory;
+      if (q.isNotEmpty) {
+        final matchesName = s.name.toLowerCase().contains(q);
+        final matchesCat = s.category.toLowerCase().contains(q);
+        final matchesLoc = s.bodyLocations.any((loc) => loc.toLowerCase().contains(q));
+        if (!matchesName && !matchesCat && !matchesLoc) return false;
+      }
+      if (_selectedLocation != null && q.isEmpty) {
+        if (!s.bodyLocations.contains(_selectedLocation)) return false;
+      }
+      if (_selectedCategory != 'All' && q.isEmpty) {
+        if (s.category != _selectedCategory) return false;
+      }
+      return true;
     }).toList();
 
-    // suggestions based on typing
-    final List<MedicalSymptom> suggestions = _searchQuery.isEmpty
+    // Suggestions autocomplete based on typing (matches name, category, or body location)
+    final List<MedicalSymptom> suggestions = q.isEmpty
         ? []
-        : symptomDatabase.where((s) => s.name.toLowerCase().startsWith(_searchQuery)).toList();
+        : symptomDatabase.where((s) {
+            final matchesName = s.name.toLowerCase().contains(q);
+            final matchesCat = s.category.toLowerCase().contains(q);
+            final matchesLoc = s.bodyLocations.any((loc) => loc.toLowerCase().contains(q));
+            return matchesName || matchesCat || matchesLoc;
+          }).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
