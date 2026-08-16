@@ -69,8 +69,10 @@ def main():
     print("TEST EXECUTION SUMMARY")
     print("=" * 70)
     print(f"  Duration    : {duration:.2f} seconds")
-    print(f"  HTML Report : file:///{os.path.abspath(report_html).replace('\\', '/')}")
-    print(f"  JUnit XML   : file:///{os.path.abspath(report_xml).replace('\\', '/')}")
+    abs_report_html = os.path.abspath(report_html).replace('\\', '/')
+    abs_report_xml = os.path.abspath(report_xml).replace('\\', '/')
+    print(f"  HTML Report : file:///{abs_report_html}")
+    print(f"  JUnit XML   : file:///{abs_report_xml}")
     print(f"  Exit Status : {'PASSED (0)' if result.returncode == 0 else f'FAILED ({result.returncode})'}")
     print("=" * 70)
 
