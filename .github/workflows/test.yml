@@ -43,14 +43,12 @@ jobs:
         run: |
           python run_tests.py --all --headless
 
-      - name: Publish Test Results Summary
+      - name: Export Test Cases Excel / CSV
         if: always()
-        uses: mikepenz/action-junit-report@v4
-        with:
-          report_paths: 'tests/reports/junit.xml'
-          check_name: 'JUnit Test Results Summary'
+        run: |
+          python export_testcases_excel.py
 
-      - name: Upload Test Artifacts & HTML Reports
+      - name: Upload Test Artifacts & Excel Reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -58,6 +56,7 @@ jobs:
           path: |
             tests/reports/report.html
             tests/reports/junit.xml
+            tests/reports/HealthGuard_AI_Test_Cases_459.csv
             tests/reports/execution.log
             tests/reports/screenshots/
           retention-days: 14
