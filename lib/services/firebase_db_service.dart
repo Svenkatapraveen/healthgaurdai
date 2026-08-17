@@ -43,6 +43,38 @@ class FirebaseDbService implements DatabaseService {
   }
 
   @override
+  Future<AssessmentModel?> getAssessmentById(String id) async {
+    try {
+      final doc = await _firestore.collection('assessments').doc(id).get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        return AssessmentModel(
+          id: data['id'] ?? doc.id,
+          userId: data['userId'] ?? '',
+          date: (data['date'] as Timestamp).toDate(),
+          primarySymptoms: List<String>.from(data['primarySymptoms'] ?? []),
+          details: Map<String, dynamic>.from(data['details'] ?? {}),
+          associatedSymptoms: List<String>.from(data['associatedSymptoms'] ?? []),
+          medicalHistory: List<String>.from(data['medicalHistory'] ?? []),
+          lifestyle: Map<String, dynamic>.from(data['lifestyle'] ?? {}),
+          overallRiskScore: (data['overallRiskScore'] ?? 0).toDouble(),
+          riskCategory: data['riskCategory'] ?? 'Unknown',
+          diseaseProbability: Map<String, double>.from(
+              (data['diseaseProbability'] as Map?)?.map((key, value) => MapEntry(key.toString(), (value as num).toDouble())) ?? {}),
+          clinicalSummary: data['clinicalSummary'] ?? '',
+          possibleCauses: List<String>.from(data['possibleCauses'] ?? []),
+          recommendations: List<String>.from(data['recommendations'] ?? []),
+          preventiveActions: List<String>.from(data['preventiveActions'] ?? []),
+          urgencyLevel: data['urgencyLevel'] ?? 'Regular',
+        );
+      }
+    } catch (e) {
+      print('Error fetching assessment by ID: $e');
+    }
+    return null;
+  }
+
+  @override
   Future<void> addAssessment(AssessmentModel assessment) async {
     await _firestore.collection('assessments').doc(assessment.id).set({
       'id': assessment.id,
@@ -86,17 +118,60 @@ class FirebaseDbService implements DatabaseService {
     return query.docs.map((doc) => _mapToAppointment(doc)).toList();
   }
 
+  Stream<List<AppointmentModel>> streamAllAppointmentsAdmin() {
+    return _firestore
+        .collection('appointments')
+        .snapshots()
+        .map((snapshot) {
+          final list = snapshot.docs.map((doc) => _mapToAppointment(doc)).toList();
+          list.sort((a, b) => b.preferredDateTime.compareTo(a.preferredDateTime));
+          return list;
+        });
+  }
+
+  Stream<int> streamUserCount() {
+    return _firestore
+        .collection('users')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
+  Stream<int> streamAssessmentCount() {
+    return _firestore
+        .collection('assessments')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
+  Stream<int> streamAlertCount() {
+    return _firestore
+        .collection('notifications')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
   AppointmentModel _mapToAppointment(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;
     return AppointmentModel(
       id: data['id'] ?? doc.id,
-      userId: data['userId'],
+      userId: data['userId'] ?? '',
       patientName: data['patientName'] ?? 'Unknown',
       mobileNumber: data['mobileNumber'] ?? '',
-      preferredDateTime: (data['preferredDateTime'] as Timestamp).toDate(),
+      preferredDateTime: data['preferredDateTime'] is Timestamp 
+          ? (data['preferredDateTime'] as Timestamp).toDate() 
+          : DateTime.now(),
       doctorSpecialty: data['doctorSpecialty'] ?? '',
       symptomsSummary: data['symptomsSummary'] ?? '',
+      reportFileName: data['reportFileName'] ?? '',
+      reportUrl: data['reportUrl'] ?? '',
+      reportStoragePath: data['reportStoragePath'] ?? '',
+      reportUploadedAt: data['reportUploadedAt'] is Timestamp 
+          ? (data['reportUploadedAt'] as Timestamp).toDate() 
+          : null,
       status: data['status'] ?? 'Pending',
+      createdAt: data['createdAt'] is Timestamp 
+          ? (data['createdAt'] as Timestamp).toDate() 
+          : DateTime.now(),
     );
   }
 
@@ -110,7 +185,14 @@ class FirebaseDbService implements DatabaseService {
       'preferredDateTime': Timestamp.fromDate(appointment.preferredDateTime),
       'doctorSpecialty': appointment.doctorSpecialty,
       'symptomsSummary': appointment.symptomsSummary,
+      'reportFileName': appointment.reportFileName,
+      'reportUrl': appointment.reportUrl,
+      'reportStoragePath': appointment.reportStoragePath,
+      'reportUploadedAt': appointment.reportUploadedAt != null 
+          ? Timestamp.fromDate(appointment.reportUploadedAt!) 
+          : Timestamp.fromDate(DateTime.now()),
       'status': appointment.status,
+      'createdAt': Timestamp.fromDate(appointment.createdAt),
     });
   }
 

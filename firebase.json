@@ -1,1 +1,39 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"health-ai-c2308","appId":"1:125323774503:android:8412a948969f0dbb82dc02","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"health-ai-c2308","configurations":{"android":"1:125323774503:android:8412a948969f0dbb82dc02","ios":"1:125323774503:ios:a71ef5d3c630131782dc02","macos":"1:125323774503:ios:a71ef5d3c630131782dc02","web":"1:125323774503:web:befeaebf7fddd90182dc02","windows":"1:125323774503:web:0d4c7ff0d29eab9482dc02"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "health-ai-c2308",
+          "appId": "1:125323774503:android:8412a948969f0dbb82dc02",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "health-ai-c2308",
+          "configurations": {
+            "android": "1:125323774503:android:8412a948969f0dbb82dc02",
+            "ios": "1:125323774503:ios:a71ef5d3c630131782dc02",
+            "macos": "1:125323774503:ios:a71ef5d3c630131782dc02",
+            "web": "1:125323774503:web:befeaebf7fddd90182dc02",
+            "windows": "1:125323774503:web:0d4c7ff0d29eab9482dc02"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

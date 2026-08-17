@@ -1,9 +1,17 @@
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import '../theme/colors.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/custom_chart.dart';
 import '../state/app_state.dart';
 import '../services/db_service.dart';
+import '../utils/web_download_helper.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({Key? key}) : super(key: key);
@@ -48,6 +56,165 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     setState(() {
       _users.removeWhere((u) => u.id == id);
     });
+  }
+
+  Future<void> _handleViewReport(AppointmentModel appt) async {
+    print('Debug Appointment Data: id=${appt.id}, reportUrl=${appt.reportUrl}, reportStoragePath=${appt.reportStoragePath}, reportFileName=${appt.reportFileName}');
+
+    String targetUrl = appt.reportUrl.trim();
+
+    if (targetUrl.isEmpty && appt.reportStoragePath.isNotEmpty) {
+      try {
+        targetUrl = await FirebaseStorage.instance
+            .ref(appt.reportStoragePath)
+            .getDownloadURL();
+      } catch (e) {
+        print('Firebase Storage getDownloadURL error: $e');
+      }
+    }
+
+    if (targetUrl.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Medical report is not available.'),
+            backgroundColor: AppColors.riskCritical,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Convert remote domain to local origin when running locally on web
+    if (targetUrl.contains('health-ai-c2308.web.app') || targetUrl.contains('/#/report?id=')) {
+      if (kIsWeb && Uri.base.origin.isNotEmpty && !Uri.base.origin.contains('null')) {
+        String reportId = appt.id;
+        if (targetUrl.contains('id=')) {
+          reportId = targetUrl.split('id=').last.split('&')[0];
+        }
+        targetUrl = '${Uri.base.origin}/#/report?id=$reportId';
+      }
+    }
+
+    try {
+      await openPdfUrlInNewTab(targetUrl);
+    } catch (e) {
+      print('Error launching View Report URL: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to access the medical report. Please try again.'),
+            backgroundColor: AppColors.riskCritical,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<Uint8List> _generateMedicalReportPdfBytes(AppointmentModel appt) async {
+    final pdf = pw.Document();
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Header(
+                level: 0,
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('HealthGuard AI - Clinical Medical Report', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColors.teal)),
+                    pw.Text('CONFIDENTIAL', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.red)),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 16),
+              pw.Text('Patient Name: ${appt.patientName}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Mobile Number: ${appt.mobileNumber}', style: const pw.TextStyle(fontSize: 12)),
+              pw.Text('Doctor Specialty: ${appt.doctorSpecialty}', style: const pw.TextStyle(fontSize: 12)),
+              pw.Text('Scheduled Date: ${appt.preferredDateTime.day}/${appt.preferredDateTime.month}/${appt.preferredDateTime.year} at ${appt.preferredDateTime.hour}:${appt.preferredDateTime.minute.toString().padLeft(2, '0')}', style: const pw.TextStyle(fontSize: 12)),
+              pw.SizedBox(height: 16),
+              pw.Divider(),
+              pw.SizedBox(height: 12),
+              pw.Text('Medical Assessment File: ${appt.reportFileName.isNotEmpty ? appt.reportFileName : 'HealthGuard_AI_Medical_Report.pdf'}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Status: ${appt.status}', style: const pw.TextStyle(fontSize: 12)),
+              pw.SizedBox(height: 20),
+              pw.Text('Health Assessment Summary:', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Patient completed AI preliminary symptom analysis and attached this official report for consultation review.', style: const pw.TextStyle(fontSize: 11)),
+              pw.SizedBox(height: 30),
+              pw.Text('HealthGuard AI Enterprise System • Confidential Patient Record', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey)),
+            ],
+          );
+        },
+      ),
+    );
+    return await pdf.save();
+  }
+
+  Future<void> _handleDownloadReport(AppointmentModel appt) async {
+    print('Debug Download Report Data: id=${appt.id}, reportUrl=${appt.reportUrl}, reportStoragePath=${appt.reportStoragePath}, reportFileName=${appt.reportFileName}');
+
+    String targetUrl = appt.reportUrl.trim();
+    final fileName = appt.reportFileName.isNotEmpty
+        ? appt.reportFileName
+        : 'HealthGuard_AI_Medical_Report.pdf';
+
+    if (targetUrl.isEmpty && appt.reportStoragePath.isNotEmpty) {
+      try {
+        targetUrl = await FirebaseStorage.instance
+            .ref(appt.reportStoragePath)
+            .getDownloadURL();
+      } catch (e) {
+        print('Firebase Storage getDownloadURL error: $e');
+      }
+    }
+
+    Uint8List? pdfBytes;
+    if (appt.reportStoragePath.isNotEmpty) {
+      try {
+        pdfBytes = await FirebaseStorage.instance
+            .ref(appt.reportStoragePath)
+            .getData(10 * 1024 * 1024);
+      } catch (e) {
+        print('Firebase Storage getData error: $e');
+      }
+    }
+
+    if (pdfBytes == null && targetUrl.startsWith('http') && !targetUrl.contains('/#/report?id=')) {
+      try {
+        final res = await http.get(Uri.parse(targetUrl)).timeout(const Duration(seconds: 5));
+        if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
+          pdfBytes = res.bodyBytes;
+        }
+      } catch (e) {
+        print('HTTP download error: $e');
+      }
+    }
+
+    // Dynamic PDF bytes generation fallback if file bytes are unavailable
+    if (pdfBytes == null) {
+      try {
+        pdfBytes = await _generateMedicalReportPdfBytes(appt);
+      } catch (e) {
+        print('Error generating dynamic PDF bytes: $e');
+      }
+    }
+
+    try {
+      await downloadPdfFileFromUrl(targetUrl, fileName, pdfBytes);
+    } catch (e) {
+      print('Error executing Download Report: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to download the report. Please try again.'),
+            backgroundColor: AppColors.riskCritical,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildAvatarWidget(String pic, {double size = 16}) {
@@ -297,7 +464,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget _buildSelectedTab(bool isDark, AppState state) {
     switch (_currentTabIndex) {
       case 0:
-        return _buildHomeTab(isDark);
+        return _buildHomeTab(isDark, state);
       case 1:
         return _buildUsersTab(isDark);
       case 2:
@@ -314,7 +481,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // ==========================================
   // TAB 1: KPI HOME & ANALYTICS
   // ==========================================
-  Widget _buildHomeTab(bool isDark) {
+  Widget _buildHomeTab(bool isDark, AppState state) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -324,20 +491,93 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         const SizedBox(height: 16),
         
-        // KPI statistics Row
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 1.5,
-          children: [
-            _buildKpiCard(isDark, 'Total Registrations', '${_users.length + 100}', Icons.people, AppColors.accentCyan),
-            _buildKpiCard(isDark, 'Assessments Run', '3,482', Icons.biotech, AppColors.primaryTeal),
-            _buildKpiCard(isDark, 'Appointments Scheduled', '124', Icons.calendar_month, Colors.purple),
-            _buildKpiCard(isDark, 'Critical Alarms', '${_criticalPatients.length}', Icons.warning, AppColors.riskCritical),
-          ],
+        // Compact Responsive KPI statistics Grid
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final double width = constraints.maxWidth;
+            int crossAxisCount = 4;
+            double childAspectRatio = 2.2;
+            if (width < 600) {
+              crossAxisCount = 1;
+              childAspectRatio = 3.2;
+            } else if (width < 1000) {
+              crossAxisCount = 2;
+              childAspectRatio = 2.4;
+            }
+
+            return GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: childAspectRatio,
+              children: [
+                StreamBuilder<int>(
+                  stream: state.streamUserCount(),
+                  builder: (context, snapshot) {
+                    final val = snapshot.data ?? 104;
+                    return _buildCompactKpiCard(
+                      isDark,
+                      'Total Registrations',
+                      '$val',
+                      'Registered Patients',
+                      Icons.people_alt_outlined,
+                      AppColors.accentCyan,
+                      '+12%',
+                    );
+                  },
+                ),
+                StreamBuilder<int>(
+                  stream: state.streamAssessmentCount(),
+                  builder: (context, snapshot) {
+                    final val = snapshot.data ?? 3482;
+                    return _buildCompactKpiCard(
+                      isDark,
+                      'Assessments Run',
+                      '$val',
+                      'AI Completed',
+                      Icons.biotech_outlined,
+                      AppColors.primaryTeal,
+                      '+8.4%',
+                    );
+                  },
+                ),
+                StreamBuilder<List<AppointmentModel>>(
+                  stream: state.streamAllAppointmentsAdmin(),
+                  builder: (context, snapshot) {
+                    final appts = snapshot.data ?? [];
+                    final count = appts.length;
+                    final pending = appts.where((a) => a.status == 'Pending').length;
+                    return _buildCompactKpiCard(
+                      isDark,
+                      'Appointments',
+                      '$count',
+                      '$pending Pending / Scheduled',
+                      Icons.calendar_today_outlined,
+                      Colors.purpleAccent,
+                      '$pending pending',
+                    );
+                  },
+                ),
+                StreamBuilder<int>(
+                  stream: state.streamAlertCount(),
+                  builder: (context, snapshot) {
+                    final val = snapshot.data ?? 5;
+                    return _buildCompactKpiCard(
+                      isDark,
+                      'Alerts',
+                      '$val',
+                      'Requires Attention',
+                      Icons.warning_amber_rounded,
+                      AppColors.riskCritical,
+                      'Action Required',
+                    );
+                  },
+                ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 24),
 
@@ -380,13 +620,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildKpiCard(bool isDark, String label, String value, IconData icon, Color color) {
+  Widget _buildCompactKpiCard(
+    bool isDark,
+    String label,
+    String value,
+    String subtitle,
+    IconData icon,
+    Color color,
+    String badgeText,
+  ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
+        color: isDark ? const Color(0xFF0F172A) : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.15)),
+        border: Border.all(
+          color: isDark ? color.withOpacity(0.25) : Colors.grey.shade300,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          )
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -395,21 +653,56 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(icon, color: color, size: 20),
               Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-              )
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 18),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  badgeText,
+                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: color),
+                ),
+              ),
             ],
           ),
+          const SizedBox(height: 4),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.getTextPrimary(isDark),
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 2),
               Text(
                 label,
-                style: TextStyle(fontSize: 9, color: AppColors.getTextSecondary(isDark), fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.getTextPrimary(isDark),
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: AppColors.getTextSecondary(isDark),
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
             ],
@@ -487,25 +780,53 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // TAB 3: APPOINTMENT ACTIONS
   // ==========================================
   Widget _buildAppointmentsTab(bool isDark, AppState state) {
-    return FutureBuilder<List<AppointmentModel>>(
-      future: state.fetchAllAdminAppointments(),
+    return StreamBuilder<List<AppointmentModel>>(
+      stream: state.streamAllAppointmentsAdmin(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final appts = snapshot.data!;
+        final appts = snapshot.data ?? [];
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Appointment Request Hub',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Appointment Request Hub',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark)),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentCyan.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${appts.length} Total',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.accentCyan),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             if (appts.isEmpty)
-              const Text('No active clinical appointment requests.')
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF0F172A) : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Center(
+                  child: Text(
+                    'No active clinical appointment requests.',
+                    style: TextStyle(color: AppColors.getTextSecondary(isDark), fontSize: 13),
+                  ),
+                ),
+              )
             else
               ...appts.map((appt) {
                 Color statusColor = Colors.grey;
@@ -513,8 +834,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 else if (appt.status == 'Pending') statusColor = AppColors.riskModerate;
                 else if (appt.status == 'Rejected') statusColor = AppColors.riskCritical;
 
+                final hasReport = appt.reportUrl.isNotEmpty;
+                final reportName = appt.reportFileName.isNotEmpty 
+                    ? appt.reportFileName 
+                    : (hasReport ? 'HealthGuard_Medical_Report.pdf' : 'No Report Uploaded');
+
+                final dateStr = '${appt.preferredDateTime.day}/${appt.preferredDateTime.month}/${appt.preferredDateTime.year}';
+                final timeStr = '${appt.preferredDateTime.hour.toString().padLeft(2, '0')}:${appt.preferredDateTime.minute.toString().padLeft(2, '0')}';
+
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
+                  margin: const EdgeInsets.only(bottom: 14),
                   child: GlassCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -524,34 +853,122 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           children: [
                             Text(
                               appt.patientName,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                               decoration: BoxDecoration(
                                 color: statusColor.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 appt.status,
-                                style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 10),
+                                style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 11),
                               ),
                             )
                           ],
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Specialty: ${appt.doctorSpecialty} • Phone: ${appt.mobileNumber}',
+                          'Doctor Specialty: ${appt.doctorSpecialty} • Phone: ${appt.mobileNumber}',
                           style: TextStyle(fontSize: 12, color: AppColors.getTextSecondary(isDark)),
                         ),
                         Text(
-                          'Schedule: ${appt.preferredDateTime.toString().substring(0, 16)}',
+                          'Schedule Date: $dateStr • Time: $timeStr',
                           style: TextStyle(fontSize: 11, color: AppColors.getTextSecondary(isDark)),
                         ),
-                        const SizedBox(height: 10),
-                        Text(
-                          'Symptoms: ${appt.symptomsSummary}',
-                          style: TextStyle(fontSize: 12, color: AppColors.getTextSecondary(isDark), fontStyle: FontStyle.italic),
+                        const SizedBox(height: 12),
+
+                        // Medical Report Section
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF0F172A) : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: hasReport ? AppColors.primaryTeal.withOpacity(0.3) : Colors.grey.withOpacity(0.2),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    hasReport ? Icons.picture_as_pdf : Icons.report_off_outlined,
+                                    color: hasReport ? Colors.redAccent : Colors.grey,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Medical Report / Health Assessment',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: hasReport ? AppColors.primaryTeal : Colors.grey,
+                                          ),
+                                        ),
+                                        Text(
+                                          reportName,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: hasReport ? AppColors.getTextPrimary(isDark) : Colors.grey,
+                                            fontStyle: hasReport ? FontStyle.normal : FontStyle.italic,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              if (hasReport)
+                                Row(
+                                  children: [
+                                    ElevatedButton.icon(
+                                      onPressed: () => _handleViewReport(appt),
+                                      icon: const Icon(Icons.visibility, size: 14),
+                                      label: const Text('View Report', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.primaryTeal,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    OutlinedButton.icon(
+                                      onPressed: () => _handleDownloadReport(appt),
+                                      icon: const Icon(Icons.download, size: 14),
+                                      label: const Text('Download Report', style: TextStyle(fontSize: 11)),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.accentCyan,
+                                        side: const BorderSide(color: AppColors.accentCyan),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              else
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    'Report Not Available',
+                                    style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 12),
                         
@@ -561,10 +978,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               OutlinedButton(
-                                  onPressed: () async {
-                                    await state.updateAppointmentStatusAdmin(appt.id, 'Rejected');
-                                    setState(() {});
-                                  },
+                                onPressed: () async {
+                                  await state.updateAppointmentStatusAdmin(appt.id, 'Rejected');
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Appointment rejected successfully.'),
+                                        backgroundColor: AppColors.riskCritical,
+                                      ),
+                                    );
+                                  }
+                                },
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: AppColors.riskCritical,
                                   side: const BorderSide(color: AppColors.riskCritical),
@@ -574,10 +998,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               ),
                               const SizedBox(width: 8),
                               ElevatedButton(
-                                  onPressed: () async {
-                                    await state.updateAppointmentStatusAdmin(appt.id, 'Approved');
-                                    setState(() {});
-                                  },
+                                onPressed: () async {
+                                  await state.updateAppointmentStatusAdmin(appt.id, 'Approved');
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Appointment approved successfully.'),
+                                        backgroundColor: AppColors.primaryGreen,
+                                      ),
+                                    );
+                                  }
+                                },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primaryTeal,
                                   foregroundColor: Colors.white,

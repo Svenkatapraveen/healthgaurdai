@@ -915,7 +915,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       final ok = await state.login(_emailController.text.trim(), _passwordController.text);
       if (ok) {
         if (!mounted) return;
-        if (state.currentUser!.isAdmin) {
+        if (state.currentUser != null && state.currentUser!.isAdmin) {
           Navigator.pushReplacementNamed(context, '/admin-dashboard');
         } else {
           await state.logout();

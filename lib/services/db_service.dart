@@ -48,7 +48,12 @@ class AppointmentModel {
   final DateTime preferredDateTime;
   final String doctorSpecialty;
   final String symptomsSummary;
+  final String reportFileName;
+  final String reportUrl;
+  final String reportStoragePath;
+  final DateTime? reportUploadedAt;
   String status; // Pending, Approved, Rejected, Completed
+  final DateTime createdAt;
 
   AppointmentModel({
     required this.id,
@@ -57,9 +62,14 @@ class AppointmentModel {
     required this.mobileNumber,
     required this.preferredDateTime,
     required this.doctorSpecialty,
-    required this.symptomsSummary,
+    this.symptomsSummary = '',
+    this.reportFileName = '',
+    this.reportUrl = '',
+    this.reportStoragePath = '',
+    this.reportUploadedAt,
     required this.status,
-  });
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
 }
 
 class NotificationModel {
@@ -102,6 +112,7 @@ class MedicineReminderModel {
 
 abstract class DatabaseService {
   Future<List<AssessmentModel>> getAssessments(String userId);
+  Future<AssessmentModel?> getAssessmentById(String id);
   Future<void> addAssessment(AssessmentModel assessment);
   
   Future<List<AppointmentModel>> getAppointments(String userId);
@@ -279,6 +290,16 @@ class MockDbService implements DatabaseService {
     await Future.delayed(const Duration(milliseconds: 300));
     return _assessments.where((e) => e.userId == userId).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  @override
+  Future<AssessmentModel?> getAssessmentById(String id) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    try {
+      return _assessments.firstWhere((e) => e.id == id);
+    } catch (_) {
+      return null;
+    }
   }
 
   @override

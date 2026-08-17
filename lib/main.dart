@@ -129,6 +129,27 @@ class _MyAppState extends State<MyApp> {
             
             // App Navigation Routes
             initialRoute: '/',
+            onGenerateRoute: (settings) {
+              if (settings.name != null && settings.name!.startsWith('/report')) {
+                String? id;
+                try {
+                  final uri = Uri.parse(settings.name!);
+                  if (uri.queryParameters.containsKey('id')) {
+                    id = uri.queryParameters['id'];
+                  } else {
+                    final parts = settings.name!.split('/report/');
+                    if (parts.length > 1 && parts[1].isNotEmpty) {
+                      id = parts[1].split('?')[0];
+                    }
+                  }
+                } catch (_) {}
+                return MaterialPageRoute(
+                  builder: (context) => PdfReportScreen(reportId: id),
+                  settings: settings,
+                );
+              }
+              return null;
+            },
             routes: {
               '/': (context) => const SplashScreen(),
               '/welcome': (context) => const WelcomeScreen(),
