@@ -28,6 +28,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   // Selected Appointment for Modal/Workspace
   AppointmentModel? _selectedAppointment;
   ConsultationModel? _activeConsultation;
+  bool _isLoadingConsultation = false;
 
   // Form Controllers for Consultation Workspace
   final _clinicalAssessmentController = TextEditingController();

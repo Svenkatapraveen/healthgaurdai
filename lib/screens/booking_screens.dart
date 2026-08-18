@@ -676,6 +676,29 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                   ],
                 ),
               ),
+              if (_uploadError != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.riskCritical.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.riskCritical),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline, color: AppColors.riskCritical, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _uploadError!,
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.riskCritical),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
 
               // 8. CONFIRM & BOOK APPOINTMENT BUTTON
