@@ -338,7 +338,7 @@ class AppState extends ChangeNotifier {
     if (_currentUser == null) return false;
     setLoading(true);
     try {
-      final updatedUser = await _authService.updateProfile(
+      await _authService.updateProfile(
         uid: _currentUser!.uid,
         fullName: fullName,
         email: _currentUser!.email,

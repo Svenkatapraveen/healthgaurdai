@@ -110,13 +110,11 @@ class _MainDashboardState extends State<MainDashboard> {
   // HOME TAB
   // ==========================================
   Widget _buildHomeTab(BuildContext context, bool isDark, AppState state, AppUser user) {
-    double healthScore = 85.0;
     String riskLevel = 'Low Risk';
     AssessmentModel? latestAssessment;
 
     if (state.assessments.isNotEmpty) {
       latestAssessment = state.assessments.first;
-      healthScore = (100 - latestAssessment.overallRiskScore).clamp(0, 100).toDouble();
       riskLevel = latestAssessment.riskCategory;
     }
 

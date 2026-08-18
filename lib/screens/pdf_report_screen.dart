@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:share_plus/share_plus.dart';
 import '../theme/colors.dart';
 import '../state/app_state.dart';
 import '../services/db_service.dart';
@@ -10,7 +9,6 @@ import '../data/symptom_database.dart';
 import '../utils/web_download_helper.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 
 class PdfReportScreen extends StatefulWidget {
   final String? reportId;

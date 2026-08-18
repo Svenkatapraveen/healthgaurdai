@@ -25,8 +25,6 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  int _currentTabIndex = 0;
-
   void _showRejectDialog(AppointmentModel appt, AppState state) {
     final reasonController = TextEditingController();
     showDialog(
@@ -196,7 +194,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Future<void> _handleViewReport(AppointmentModel appt) async {
-    final state = AppStateProvider.of(context);
     final reportId = appt.reportId.isNotEmpty ? appt.reportId : appt.id;
     Navigator.pushNamed(context, '/report?id=$reportId');
   }

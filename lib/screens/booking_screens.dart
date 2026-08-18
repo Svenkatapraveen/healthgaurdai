@@ -6,7 +6,6 @@ import '../theme/colors.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_badge.dart';
-import '../widgets/app_text_field.dart';
 import '../widgets/app_layout.dart';
 import '../widgets/app_sidebar.dart';
 import '../widgets/empty_state.dart';
@@ -27,8 +26,6 @@ class _BookingWizardScreenState extends State<BookingWizardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
     return AppLayout(
       title: 'Appointment Management',
       subtitle: 'Schedule consultations and track status with clinical doctors',

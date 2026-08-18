@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_button.dart';
-import '../widgets/app_badge.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/body_map_widget.dart';
 import '../state/app_state.dart';
@@ -22,7 +21,6 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  String _selectedCategory = 'All';
   String _bodyViewMode = 'front';
   String? _selectedBodyArea;
   final Set<String> _selectedPrimary = {};
@@ -49,8 +47,6 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
     'Kidney Disease',
     'Thyroid Disorder',
   ];
-
-  final List<String> _categories = symptomCategoriesList;
 
   @override
   void initState() {

@@ -47,7 +47,6 @@ class AppButton extends StatelessWidget {
         height = 48;
         break;
       case AppButtonSize.medium:
-      default:
         padding = const EdgeInsets.symmetric(horizontal: 18, vertical: 11);
         fontSize = 14;
         iconSize = 18;
@@ -81,7 +80,6 @@ class AppButton extends StatelessWidget {
         textColor = Colors.white;
         break;
       case AppButtonVariant.primary:
-      default:
         bgColor = AppColors.primaryBlue;
         textColor = Colors.white;
         break;

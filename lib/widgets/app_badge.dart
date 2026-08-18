@@ -78,7 +78,6 @@ class AppBadge extends StatelessWidget {
         fg = isDark ? AppColors.primaryTeal : AppColors.primaryBlue;
         break;
       case BadgeType.neutral:
-      default:
         bg = isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
         fg = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569);
         break;

@@ -6,7 +6,6 @@ import '../widgets/app_card.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_badge.dart';
-import '../widgets/app_modal.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/app_layout.dart';
 import '../widgets/app_sidebar.dart';
@@ -25,12 +24,8 @@ class DoctorDashboardScreen extends StatefulWidget {
 }
 
 class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
-  int _selectedNavIndex = 0;
-  String _selectedTabFilter = 'All';
-
   AppointmentModel? _selectedAppointment;
   ConsultationModel? _activeConsultation;
-  bool _isLoadingConsultation = false;
 
   final _clinicalAssessmentController = TextEditingController();
   final _clinicalNotesController = TextEditingController();
