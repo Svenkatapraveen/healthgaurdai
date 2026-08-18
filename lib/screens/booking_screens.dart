@@ -101,7 +101,6 @@ class _AppointmentBookingFormState extends State<AppointmentBookingForm> {
 
   AssessmentModel? _attachedAssessment;
   PlatformFile? _uploadedPdfFile;
-  String? _uploadError;
   bool _isUploadingPdf = false;
   bool _isSlotBookedError = false;
 

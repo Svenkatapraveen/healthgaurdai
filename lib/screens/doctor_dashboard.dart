@@ -26,6 +26,7 @@ class DoctorDashboardScreen extends StatefulWidget {
 class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   AppointmentModel? _selectedAppointment;
   ConsultationModel? _activeConsultation;
+  bool _isLoadingConsultation = false;
 
   final _clinicalAssessmentController = TextEditingController();
   final _clinicalNotesController = TextEditingController();
@@ -342,6 +343,11 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                                         icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.primaryTeal),
                                         tooltip: 'View Patient Report',
                                         onPressed: () => _handleViewReport(appt),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.download_outlined, size: 18, color: AppColors.primaryTeal),
+                                        tooltip: 'Download Patient Report',
+                                        onPressed: () => _handleDownloadReport(appt),
                                       ),
                                     ],
                                   )),
