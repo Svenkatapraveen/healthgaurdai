@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
-import '../widgets/glass_card.dart';
+import '../widgets/app_card.dart';
+import '../widgets/app_badge.dart';
+import '../widgets/app_button.dart';
+import '../widgets/app_layout.dart';
+import '../widgets/app_sidebar.dart';
+import '../widgets/empty_state.dart';
 import '../state/app_state.dart';
 
 class NotificationsScreen extends StatelessWidget {
@@ -12,107 +17,128 @@ class NotificationsScreen extends StatelessWidget {
     final state = AppStateProvider.of(context);
     final notifications = state.notifications;
 
-    return Scaffold(
-      backgroundColor: AppColors.getBg(isDark),
-      appBar: AppBar(
-        title: const Text('Notifications Hub', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: notifications.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.notifications_off_outlined, size: 64, color: AppColors.getTextSecondary(isDark)),
-                  const SizedBox(height: 16),
-                  Text(
-                    'All caught up! No notifications.',
-                    style: TextStyle(color: AppColors.getTextSecondary(isDark)),
-                  ),
-                ],
+    final role = state.currentUser?.isAdmin == true
+        ? UserRole.admin
+        : state.currentDoctor != null
+            ? UserRole.doctor
+            : UserRole.patient;
+
+    final backTarget = role == UserRole.admin
+        ? '/admin-dashboard'
+        : role == UserRole.doctor
+            ? '/doctor-dashboard'
+            : '/dashboard';
+
+    return AppLayout(
+      title: 'Notifications Hub',
+      subtitle: 'System alerts, appointment updates, and health reminders',
+      role: role,
+      currentRoute: '/notifications',
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              AppButton(
+                label: 'Back to Dashboard',
+                icon: Icons.arrow_back,
+                variant: AppButtonVariant.secondary,
+                size: AppButtonSize.small,
+                onPressed: () {
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  } else {
+                    Navigator.pushReplacementNamed(context, backTarget);
+                  }
+                },
               ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: notifications.length,
-              itemBuilder: (context, index) {
-                final notif = notifications[index];
+            ],
+          ),
+          const SizedBox(height: 16),
 
-                // Category styling
-                IconData categoryIcon = Icons.notifications;
-                Color categoryColor = AppColors.primaryTeal;
-                
-                if (notif.category == 'Alert') {
-                  categoryIcon = Icons.warning_amber_rounded;
-                  categoryColor = AppColors.riskCritical;
-                } else if (notif.category == 'Appointment') {
-                  categoryIcon = Icons.event_available;
-                  categoryColor = Colors.blueAccent;
-                } else if (notif.category == 'Reminder') {
-                  categoryIcon = Icons.medication;
-                  categoryColor = Colors.purpleAccent;
-                } else if (notif.category == 'Health') {
-                  categoryIcon = Icons.water_drop;
-                  categoryColor = AppColors.primaryTeal;
-                }
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: GlassCard(
-                    padding: const EdgeInsets.all(14),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: categoryColor.withOpacity(0.12),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(categoryIcon, color: categoryColor, size: 20),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                notif.title,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                notif.body,
-                                style: TextStyle(fontSize: 12, color: AppColors.getTextSecondary(isDark), height: 1.4),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                _formatTimestamp(notif.timestamp),
-                                style: TextStyle(fontSize: 10, color: AppColors.getTextSecondary(isDark)),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+          notifications.isEmpty
+              ? EmptyState(
+                  icon: Icons.notifications_off_outlined,
+                  title: 'All Caught Up!',
+                  description: 'You currently have no unread notifications.',
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Recent Notifications (${notifications.length})',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.getTextPrimary(isDark)),
                     ),
-                  ),
-                );
-              },
+                    const SizedBox(height: 16),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: notifications.length,
+                  itemBuilder: (context, index) {
+                    final notif = notifications[index];
+                    IconData categoryIcon = Icons.notifications;
+                    Color categoryColor = AppColors.primaryTeal;
+
+                    if (notif.category == 'Alert') {
+                      categoryIcon = Icons.warning_amber_rounded;
+                      categoryColor = AppColors.danger;
+                    } else if (notif.category == 'Appointment') {
+                      categoryIcon = Icons.event_available;
+                      categoryColor = AppColors.primaryBlue;
+                    }
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: AppCard(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: categoryColor.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(categoryIcon, color: categoryColor, size: 20),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        notif.title,
+                                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.getTextPrimary(isDark)),
+                                      ),
+                                      AppBadge(label: notif.category, isSmall: true),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    notif.body,
+                                    style: TextStyle(fontSize: 12, color: AppColors.getTextSecondary(isDark), height: 1.4),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    '${notif.timestamp.day}/${notif.timestamp.month}/${notif.timestamp.year} at ${notif.timestamp.hour}:${notif.timestamp.minute.toString().padLeft(2, '0')}',
+                                    style: TextStyle(fontSize: 10, color: AppColors.getTextSecondary(isDark)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
+        ],
+      ),
     );
-  }
-
-  String _formatTimestamp(DateTime time) {
-    final now = DateTime.now();
-    final difference = now.difference(time);
-
-    if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} mins ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours} hours ago';
-    } else {
-      return '${time.day}/${time.month}/${time.year}';
-    }
   }
 }

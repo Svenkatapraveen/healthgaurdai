@@ -1,205 +1,308 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
-import '../widgets/glass_card.dart';
+import '../widgets/app_card.dart';
+import '../widgets/stat_card.dart';
+import '../widgets/app_button.dart';
+import '../widgets/app_layout.dart';
+import '../widgets/app_sidebar.dart';
+import '../widgets/app_modal.dart';
+import '../widgets/app_text_field.dart';
 import '../state/app_state.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final state = AppStateProvider.of(context);
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  void _showEditProfileDialog(BuildContext context, AppState state) {
     final user = state.currentUser;
+    if (user == null) return;
 
-    if (user == null) {
-      return const Scaffold(body: Center(child: Text('Unauthorized access.')));
-    }
+    final nameCtrl = TextEditingController(text: user.fullName);
+    final mobileCtrl = TextEditingController(text: user.mobileNumber);
+    final ageCtrl = TextEditingController(text: user.age > 0 ? '${user.age}' : '30');
+    String selectedGender = user.gender.isNotEmpty ? user.gender : 'Male';
 
-    return Scaffold(
-      backgroundColor: AppColors.getBg(isDark),
-      appBar: AppBar(
-        title: const Text('My Profile', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // User Avatar & Title header
-            Center(
-              child: Column(
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AppModal(
+          title: 'Edit Profile Information',
+          icon: Icons.edit_note_outlined,
+          iconColor: AppColors.primaryTeal,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppTextField(
+                label: 'Full Name',
+                controller: nameCtrl,
+                prefixIcon: Icons.person_outline,
+              ),
+              const SizedBox(height: 14),
+              AppTextField(
+                label: 'Mobile Number',
+                controller: mobileCtrl,
+                prefixIcon: Icons.phone_outlined,
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 14),
+              Row(
                 children: [
-                  CircleAvatar(
-                    radius: 48,
-                    backgroundColor: AppColors.primaryTeal.withOpacity(0.15),
-                    child: Text(
-                      user.fullName.substring(0, 1),
-                      style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.primaryTeal),
+                  Expanded(
+                    child: AppTextField(
+                      label: 'Age',
+                      controller: ageCtrl,
+                      prefixIcon: Icons.cake_outlined,
+                      keyboardType: TextInputType.number,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    user.fullName,
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark)),
-                  ),
-                  Text(
-                    user.email,
-                    style: TextStyle(fontSize: 13, color: AppColors.getTextSecondary(isDark)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Health Statistics boxes
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    isDark,
-                    title: 'Assessments',
-                    value: state.assessments.length.toString(),
-                    icon: Icons.analytics,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    isDark,
-                    title: 'Appointments',
-                    value: state.appointments.length.toString(),
-                    icon: Icons.event,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // User Demographics Info
-            Text(
-              'Biometrics Profile',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark)),
-            ),
-            const SizedBox(height: 10),
-            GlassCard(
-              child: Column(
-                children: [
-                  _buildBioRow(isDark, 'Age', '${user.age} Years Old', Icons.cake),
-                  const Divider(),
-                  _buildBioRow(isDark, 'Gender Identification', user.gender, Icons.wc),
-                  const Divider(),
-                  _buildBioRow(isDark, 'Contact Number', user.mobileNumber, Icons.phone),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Account settings list
-            Text(
-              'Account Preferences',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark)),
-            ),
-            const SizedBox(height: 10),
-            GlassCard(
-              child: Column(
-                children: [
-                  // Dark mode switcher
-                  ListTile(
-                    leading: Icon(isDark ? Icons.light_mode : Icons.dark_mode, color: AppColors.primaryTeal),
-                    title: const Text('Dark Theme Mode', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                    trailing: Switch(
-                      value: isDark,
-                      activeColor: AppColors.primaryTeal,
-                      onChanged: (val) => state.toggleTheme(),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Gender', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 6),
+                        DropdownButtonFormField<String>(
+                          value: selectedGender,
+                          decoration: InputDecoration(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          items: ['Male', 'Female', 'Other'].map((g) => DropdownMenuItem(value: g, child: Text(g, style: const TextStyle(fontSize: 13)))).toList(),
+                          onChanged: (val) {
+                            if (val != null) setDialogState(() => selectedGender = val);
+                          },
+                        ),
+                      ],
                     ),
                   ),
-                  const Divider(),
-                  
-                  // Mock security/passwords settings
-                  _buildSettingTile(isDark, 'Security Settings & Password', Icons.security),
-                  const Divider(),
-                  _buildSettingTile(isDark, 'Emergency Contact Information', Icons.contact_phone),
                 ],
               ),
+            ],
+          ),
+          actions: [
+            AppButton(
+              label: 'Cancel',
+              variant: AppButtonVariant.secondary,
+              size: AppButtonSize.small,
+              onPressed: () => Navigator.pop(ctx),
             ),
-            const SizedBox(height: 32),
-
-            // Logout Button
-            ElevatedButton.icon(
+            AppButton(
+              label: 'Save Changes',
+              size: AppButtonSize.small,
               onPressed: () async {
-                await state.logout();
-                if (context.mounted) {
-                  Navigator.pushNamedAndRemoveUntil(context, '/welcome', (route) => false);
+                final newName = nameCtrl.text.trim();
+                final newMobile = mobileCtrl.text.trim();
+                final newAge = int.tryParse(ageCtrl.text.trim()) ?? user.age;
+                
+                if (newName.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name cannot be empty')));
+                  return;
+                }
+
+                final ok = await state.updateUserProfile(
+                  fullName: newName,
+                  mobileNumber: newMobile,
+                  age: newAge,
+                  gender: selectedGender,
+                );
+
+                if (mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(ok ? 'Profile updated successfully!' : 'Failed to update profile.'),
+                      backgroundColor: ok ? AppColors.success : AppColors.danger,
+                    ),
+                  );
                 }
               },
-              icon: const Icon(Icons.logout),
-              label: const Text('Sign Out of Account', style: TextStyle(fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.riskCritical.withOpacity(0.12),
-                foregroundColor: AppColors.riskCritical,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-              ),
             ),
-            const SizedBox(height: 30),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatCard(bool isDark, {required String title, required String value, required IconData icon}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.15)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: AppColors.primaryTeal, size: 20),
-          const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          Text(title, style: TextStyle(fontSize: 10, color: AppColors.getTextSecondary(isDark))),
-        ],
-      ),
-    );
-  }
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final state = AppStateProvider.of(context);
+    final user = state.currentUser;
+    final doctor = state.currentDoctor;
 
-  Widget _buildBioRow(bool isDark, String label, String value, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    final role = user?.isAdmin == true
+        ? UserRole.admin
+        : doctor != null
+            ? UserRole.doctor
+            : UserRole.patient;
+
+    final name = doctor?.name ?? user?.name ?? 'User Account';
+    final email = doctor?.email ?? user?.email ?? 'user@healthguard.ai';
+
+    return AppLayout(
+      title: 'User Profile & Settings',
+      subtitle: 'Manage your biometrics, notifications, theme preferences, and credentials',
+      role: role,
+      currentRoute: '/profile',
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, color: AppColors.primaryTeal, size: 16),
-              const SizedBox(width: 8),
-              Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+              AppButton(
+                label: 'Back to Dashboard',
+                icon: Icons.arrow_back,
+                variant: AppButtonVariant.secondary,
+                size: AppButtonSize.small,
+                onPressed: () {
+                  final backTarget = role == UserRole.admin
+                      ? '/admin-dashboard'
+                      : role == UserRole.doctor
+                          ? '/doctor-dashboard'
+                          : '/dashboard';
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  } else {
+                    Navigator.pushReplacementNamed(context, backTarget);
+                  }
+                },
+              ),
             ],
           ),
-          Text(
-            value,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.getTextSecondary(isDark)),
+          const SizedBox(height: 16),
+
+          // Profile Header Card
+          AppCard(
+            backgroundColor: AppColors.primaryBlue,
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 32,
+                  backgroundColor: AppColors.primaryTeal,
+                  child: Text(
+                    name.isNotEmpty ? name.characters.first.toUpperCase() : 'U',
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                      const SizedBox(height: 2),
+                      Text(email, style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.8))),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(color: AppColors.primaryTeal, borderRadius: BorderRadius.circular(6)),
+                        child: Text(
+                          role == UserRole.admin ? 'Administrator' : role == UserRole.doctor ? 'Physician Specialist' : 'Patient',
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Stats
+          Row(
+            children: [
+              Expanded(
+                child: StatCard(
+                  title: 'Total Assessments',
+                  value: '${state.assessments.length}',
+                  icon: Icons.assignment_outlined,
+                  iconBgColor: AppColors.primaryBlue.withOpacity(0.12),
+                  iconColor: AppColors.primaryBlue,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: StatCard(
+                  title: 'Total Appointments',
+                  value: '${state.appointments.length}',
+                  icon: Icons.calendar_month_outlined,
+                  iconBgColor: AppColors.primaryTeal.withOpacity(0.15),
+                  iconColor: AppColors.primaryTeal,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Profile Details Card
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Biometrics & Contact Information', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.getTextPrimary(isDark))),
+                    if (user != null)
+                      AppButton(
+                        label: 'Edit Profile',
+                        icon: Icons.edit_outlined,
+                        variant: AppButtonVariant.outline,
+                        size: AppButtonSize.small,
+                        onPressed: () => _showEditProfileDialog(context, state),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (user != null) ...[
+                  _buildProfileRow(isDark, 'Age', '${user.age} Years Old', Icons.cake_outlined),
+                  const Divider(height: 20),
+                  _buildProfileRow(isDark, 'Gender', user.gender, Icons.wc_outlined),
+                  const Divider(height: 20),
+                  _buildProfileRow(isDark, 'Mobile Number', user.mobileNumber.isNotEmpty ? user.mobileNumber : 'Not set', Icons.phone_outlined),
+                  const Divider(height: 20),
+                ],
+                _buildProfileRow(isDark, 'Account Security', 'Firebase Auth SSL Encrypted', Icons.shield_outlined),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Actions
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              AppButton(
+                label: 'Logout Account',
+                icon: Icons.logout,
+                variant: AppButtonVariant.danger,
+                onPressed: () {
+                  state.logout();
+                  Navigator.pushNamedAndRemoveUntil(context, '/auth', (route) => false);
+                },
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSettingTile(bool isDark, String text, IconData icon) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.primaryTeal),
-      title: Text(text, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-      trailing: Icon(Icons.chevron_right, color: AppColors.getTextSecondary(isDark)),
-      onTap: () {},
+  Widget _buildProfileRow(bool isDark, String label, String value, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: AppColors.primaryTeal),
+        const SizedBox(width: 12),
+        SizedBox(width: 140, child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.getTextPrimary(isDark)))),
+        Expanded(child: Text(value, style: TextStyle(fontSize: 13, color: AppColors.getTextSecondary(isDark)))),
+      ],
     );
   }
 }

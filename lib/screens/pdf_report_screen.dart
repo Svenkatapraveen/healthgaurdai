@@ -7,6 +7,7 @@ import '../state/app_state.dart';
 import '../services/db_service.dart';
 import '../services/auth_service.dart';
 import '../data/symptom_database.dart';
+import '../utils/web_download_helper.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -175,6 +176,52 @@ class _PdfReportScreenState extends State<PdfReportScreen> {
       }
     }
     return 'https://health-ai-c2308.web.app/#/report?id=${assessment.id}';
+  }
+
+  Future<void> _downloadReport(AssessmentModel assessment, AppUser? user) async {
+    setState(() {
+      _isDownloading = true;
+      _downloadProgress = 0.3;
+    });
+    try {
+      final pdfBytes = await _generatePdfBytes(assessment, user);
+      setState(() => _downloadProgress = 0.7);
+      final filename = 'HealthGuard_AI_Medical_Report_${assessment.id}.pdf';
+      await downloadPdfFileFromUrl('', filename, bytes: pdfBytes);
+      setState(() => _downloadProgress = 1.0);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Report PDF downloaded successfully!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to download report: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+          _downloadProgress = 0.0;
+        });
+      }
+    }
+  }
+
+  Future<void> _shareReport(AssessmentModel assessment, AppUser user) async {
+    try {
+      final pdfBytes = await _generatePdfBytes(assessment, user);
+      final filename = 'HealthGuard_AI_Medical_Report_${assessment.id}.pdf';
+      await downloadPdfFileFromUrl('', filename, bytes: pdfBytes);
+    } catch (_) {}
   }
 
   // ==========================================
@@ -717,89 +764,6 @@ class _PdfReportScreenState extends State<PdfReportScreen> {
       return PdfColors.orange700;
     }
     return PdfColors.teal700;
-  }
-
-  void _downloadReport(AssessmentModel assessment, AppUser? user) async {
-    setState(() {
-      _isDownloading = true;
-      _downloadProgress = 0.2;
-    });
-
-    try {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Generating Detailed Health Assessment PDF...'),
-            backgroundColor: AppColors.primaryBlue,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-
-      setState(() => _downloadProgress = 0.6);
-      final pdfBytes = await _generatePdfBytes(assessment, user);
-
-      setState(() => _downloadProgress = 0.9);
-      await Printing.sharePdf(
-        bytes: pdfBytes,
-        filename: 'HealthGuard_AI_Assessment_Report_${assessment.id}.pdf',
-      );
-
-      setState(() => _downloadProgress = 1.0);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Report generated and downloaded successfully.'),
-            backgroundColor: AppColors.primaryTeal,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Unable to generate PDF report. Please try again.'),
-            backgroundColor: Colors.redAccent,
-            duration: Duration(seconds: 4),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isDownloading = false;
-        });
-      }
-    }
-  }
-
-  void _shareReport(AssessmentModel assessment, AppUser user) async {
-    final reportUrl = getReportShareUrl(assessment);
-    final shareText = 'My HealthGuard AI Assessment Report.\nReport Link: $reportUrl';
-    try {
-      final result = await Share.share(
-        shareText,
-        subject: 'HealthGuard AI Assessment Report',
-      );
-      if (result.status == ShareResultStatus.success) {
-        return;
-      }
-    } catch (_) {
-      try {
-        await Clipboard.setData(ClipboardData(text: reportUrl));
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Report link copied to clipboard!'),
-              backgroundColor: AppColors.primaryTeal,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-      } catch (_) {}
-    }
   }
 
   // ==========================================

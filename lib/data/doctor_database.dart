@@ -13,6 +13,8 @@ class DoctorModel {
   final String status;
   final String profileImage;
 
+  String get hospital => clinicLocation;
+
   const DoctorModel({
     required this.id,
     required this.name,

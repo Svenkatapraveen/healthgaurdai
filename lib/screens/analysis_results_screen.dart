@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
-import '../widgets/glass_card.dart';
-import '../widgets/custom_chart.dart';
+import '../widgets/app_card.dart';
+import '../widgets/app_button.dart';
+import '../widgets/app_badge.dart';
+import '../widgets/app_layout.dart';
+import '../widgets/app_sidebar.dart';
 import '../services/db_service.dart';
+import '../state/app_state.dart';
+import '../utils/pdf_generator_helper.dart';
+import '../utils/web_download_helper.dart';
 
 class AnalysisResultsScreen extends StatelessWidget {
   const AnalysisResultsScreen({Key? key}) : super(key: key);
@@ -10,8 +16,6 @@ class AnalysisResultsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    // Attempt to parse AssessmentModel from arguments
     final assessment = ModalRoute.of(context)!.settings.arguments as AssessmentModel?;
 
     if (assessment == null) {
@@ -21,270 +25,245 @@ class AnalysisResultsScreen extends StatelessWidget {
       );
     }
 
-    // Determine colors based on risk
-    Color riskColor = AppColors.riskLow;
-    if (assessment.riskCategory.contains('Moderate')) riskColor = AppColors.riskModerate;
-    else if (assessment.riskCategory.contains('Critical')) riskColor = AppColors.riskCritical;
-    else if (assessment.riskCategory.contains('High')) riskColor = AppColors.riskHigh;
-
-    // Map probabilities for charts
-    final diseaseProb = assessment.diseaseProbability;
-    final List<double> chartPoints = diseaseProb.values.toList();
-    final List<String> chartLabels = diseaseProb.keys.toList();
-
-    return Scaffold(
-      backgroundColor: AppColors.getBg(isDark),
-      appBar: AppBar(
-        title: const Text('AI Clinical Diagnosis', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppColors.getTextPrimary(isDark)),
-          onPressed: () {
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            } else {
-              Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false);
-            }
-          },
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Overall Risk Score Callout
-            GlassCard(
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Risk Category',
-                        style: TextStyle(fontSize: 13, color: AppColors.getTextSecondary(isDark)),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: riskColor.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          assessment.riskCategory,
-                          style: TextStyle(color: riskColor, fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
-                      )
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    '${assessment.overallRiskScore.toStringAsFixed(0)}%',
-                    style: TextStyle(
-                      fontSize: 64,
-                      fontWeight: FontWeight.bold,
-                      color: riskColor,
-                    ),
-                  ),
-                  const Text(
-                    'Overall Disease Risk Index',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.warning_amber_rounded, color: riskColor, size: 18),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Urgency Level: ${assessment.urgencyLevel}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: riskColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Probability chart
-            Text(
-              'Disease Probability Breakdown',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark)),
-            ),
-            const SizedBox(height: 12),
-            GlassCard(
-              child: CustomChart(
-                dataPoints: chartPoints,
-                labels: chartLabels,
-                type: ChartType.bar,
-                height: 160,
-                maxValue: 100,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Clinical Summary
-            Text(
-              'Clinical Summary',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark)),
-            ),
-            const SizedBox(height: 12),
-            GlassCard(
-              child: Text(
-                assessment.clinicalSummary,
-                style: const TextStyle(fontSize: 13, height: 1.5),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Possible Causes
-            _buildSectionCard(
-              isDark,
-              title: 'Possible Conditions',
-              items: assessment.possibleCauses,
-              icon: Icons.biotech,
-              color: AppColors.primaryTeal,
-            ),
-            const SizedBox(height: 16),
-
-            // AI Recommendations
-            _buildSectionCard(
-              isDark,
-              title: 'AI Recommendations',
-              items: assessment.recommendations,
-              icon: Icons.psychology,
-              color: Colors.blueAccent,
-            ),
-            const SizedBox(height: 16),
-
-            // Preventive Actions
-            _buildSectionCard(
-              isDark,
-              title: 'Preventive Measures',
-              items: assessment.preventiveActions,
-              icon: Icons.shield,
-              color: AppColors.primaryGreen,
-            ),
-            const SizedBox(height: 24),
-
-            // Route Navigation Buttons
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primaryTeal, AppColors.primaryBlue],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primaryTeal.withOpacity(0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/report', arguments: assessment);
-                },
-                icon: const Icon(Icons.picture_as_pdf_rounded, color: Colors.white),
-                label: const Text('Generate Premium PDF Report', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/forecast');
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: BorderSide(color: AppColors.getBorder(isDark)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Future Risk Forecast', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/recommendations', arguments: assessment.primarySymptoms.first);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: BorderSide(color: AppColors.getBorder(isDark)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Recommend Doctor', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            TextButton(
-              onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false),
-              child: Text('Return to Home Dashboard', style: TextStyle(color: AppColors.primaryTeal)),
-            ),
-            const SizedBox(height: 30),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionCard(
-    bool isDark, {
-    required String title,
-    required List<String> items,
-    required IconData icon,
-    required Color color,
-  }) {
-    return GlassCard(
-      child: Column(
+    return AppLayout(
+      title: 'HealthGuard AI Assessment',
+      subtitle: 'Clinical risk summary & AI diagnostic analysis',
+      role: UserRole.patient,
+      currentRoute: '/results',
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              AppButton(
+                label: 'Back to Dashboard',
+                icon: Icons.arrow_back,
+                variant: AppButtonVariant.secondary,
+                size: AppButtonSize.small,
+                onPressed: () {
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  } else {
+                    Navigator.pushReplacementNamed(context, '/dashboard');
+                  }
+                },
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          ...items.map((it) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 6.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('• ', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
-                  Expanded(child: Text(it, style: const TextStyle(fontSize: 13, height: 1.4))),
-                ],
+          const SizedBox(height: 16),
+
+          // AI Header Badge & Disclaimer Banner
+          AppCard(
+            backgroundColor: AppColors.primaryBlue,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryTeal,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'AI-ASSISTED ASSESSMENT',
+                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'ID: ${assessment.id}',
+                      style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          width: 80,
+                          height: 80,
+                          child: CircularProgressIndicator(
+                            value: (assessment.overallRiskScore / 100).clamp(0.0, 1.0),
+                            strokeWidth: 8,
+                            backgroundColor: Colors.white24,
+                            color: assessment.overallRiskScore >= 75
+                                ? AppColors.danger
+                                : assessment.overallRiskScore >= 50
+                                    ? AppColors.warning
+                                    : AppColors.primaryTeal,
+                          ),
+                        ),
+                        Text(
+                          '${assessment.overallRiskScore.toInt()}%',
+                          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Risk Score & Urgency: ${assessment.urgencyLevel}',
+                            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 4),
+                          AppBadge.risk(assessment.riskCategory),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Recommended Specialty: ${(assessment.details["recommendedDoctor"] as String?) ?? "General Practitioner"}',
+                            style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black26,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.white70, size: 16),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'This AI-assisted assessment is intended to support clinical review and does not replace professional medical diagnosis.',
+                          style: TextStyle(color: Colors.white70, fontSize: 11),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Symptoms & AI Summary
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 6,
+                child: AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Reported Symptoms',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.getTextPrimary(isDark)),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: assessment.symptoms.map((s) {
+                          return Chip(
+                            label: Text(s, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                            backgroundColor: AppColors.primaryBlue.withOpacity(0.1),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'AI Clinical Summary',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.getTextPrimary(isDark)),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        assessment.clinicalSummary,
+                        style: TextStyle(fontSize: 13, color: AppColors.getTextSecondary(isDark), height: 1.5),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            );
-          }).toList()
+              const SizedBox(width: 20),
+              Expanded(
+                flex: 4,
+                child: AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Possible Health Conditions',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.getTextPrimary(isDark)),
+                      ),
+                      const SizedBox(height: 12),
+                      ...assessment.possibleCauses.map((cause) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.circle, size: 8, color: AppColors.primaryTeal),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(cause, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.getTextPrimary(isDark))),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Action Buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              AppButton(
+                label: 'View Full Report',
+                icon: Icons.visibility_outlined,
+                variant: AppButtonVariant.outline,
+                onPressed: () {
+                  Navigator.pushNamed(context, '/report?id=${assessment.id}');
+                },
+              ),
+              const SizedBox(width: 12),
+              AppButton(
+                label: 'Download PDF',
+                icon: Icons.download_outlined,
+                variant: AppButtonVariant.secondary,
+                onPressed: () async {
+                  final state = AppStateProvider.of(context);
+                  final pdfBytes = await generate21SectionMedicalReportPdfBytes(
+                    assessment: assessment,
+                    user: state.currentUser,
+                  );
+                  await downloadPdfFileFromUrl('', 'Medical_Report_${assessment.id}.pdf', bytes: pdfBytes);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Report PDF downloaded successfully!'), backgroundColor: AppColors.success),
+                    );
+                  }
+                },
+              ),
+              const SizedBox(width: 12),
+              AppButton(
+                label: 'Book Appointment',
+                icon: Icons.calendar_month_outlined,
+                onPressed: () {
+                  Navigator.pushNamed(context, '/booking', arguments: assessment);
+                },
+              ),
+            ],
+          ),
         ],
       ),
     );

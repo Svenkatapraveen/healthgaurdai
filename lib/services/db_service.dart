@@ -20,6 +20,8 @@ class AssessmentModel {
   final List<String> preventiveActions;
   final String urgencyLevel; // Regular, Urgent, Emergency
 
+  List<String> get symptoms => primarySymptoms;
+
   AssessmentModel({
     required this.id,
     required this.userId,
@@ -72,6 +74,8 @@ class AppointmentModel {
 
   final DateTime createdAt;
   DateTime? updatedAt;
+
+  String get timeSlot => '${preferredDateTime.hour.toString().padLeft(2, '0')}:${preferredDateTime.minute.toString().padLeft(2, '0')}';
 
   AppointmentModel({
     required this.id,

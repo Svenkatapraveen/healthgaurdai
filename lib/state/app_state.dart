@@ -190,6 +190,8 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  Future<void> resetPassword(String email) => requestPasswordReset(email);
+
   Future<void> logout() async {
     await _authService.logout();
     _currentUser = null;
@@ -325,6 +327,39 @@ class AppState extends ChangeNotifier {
       return db.streamUserCount();
     }
     return Stream.value(104);
+  }
+
+  Future<bool> updateUserProfile({
+    required String fullName,
+    required String mobileNumber,
+    required int age,
+    required String gender,
+  }) async {
+    if (_currentUser == null) return false;
+    setLoading(true);
+    try {
+      final updatedUser = await _authService.updateProfile(
+        uid: _currentUser!.uid,
+        fullName: fullName,
+        email: _currentUser!.email,
+      );
+      _currentUser = AppUser(
+        uid: _currentUser!.uid,
+        fullName: fullName,
+        email: _currentUser!.email,
+        mobileNumber: mobileNumber,
+        age: age,
+        gender: gender,
+        isAdmin: _currentUser!.isAdmin,
+        isEmailVerified: _currentUser!.isEmailVerified,
+      );
+      notifyListeners();
+      setLoading(false);
+      return true;
+    } catch (e) {
+      setLoading(false);
+      return false;
+    }
   }
 
   Stream<int> streamAssessmentCount() {

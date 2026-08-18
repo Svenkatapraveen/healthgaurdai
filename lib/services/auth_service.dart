@@ -11,6 +11,8 @@ class AppUser {
   final bool isEmailVerified;
   final String? profilePic;
 
+  String get name => fullName;
+
   AppUser({
     required this.uid,
     required this.fullName,
