@@ -365,6 +365,12 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   }
 
   Widget _buildConsultationWorkspace(bool isDark) {
+    if (_isLoadingConsultation) {
+      return const Padding(
+        padding: EdgeInsets.all(40.0),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
     final appt = _selectedAppointment!;
 
     return Column(
