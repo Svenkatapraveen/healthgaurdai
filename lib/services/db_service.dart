@@ -44,32 +44,103 @@ class AppointmentModel {
   final String id; // HG-2026-XXXXXX
   final String userId;
   final String patientName;
+  final String patientEmail;
   final String mobileNumber;
-  final DateTime preferredDateTime;
+
+  final String doctorId;
+  final String doctorName;
   final String doctorSpecialty;
+
+  DateTime preferredDateTime;
   final String symptomsSummary;
+
+  final String reportId;
   final String reportFileName;
   final String reportUrl;
   final String reportStoragePath;
   final DateTime? reportUploadedAt;
-  String status; // Pending, Approved, Rejected, Completed
+
+  final double riskScore;
+  final String riskLevel;
+
+  String status; // Pending, Approved, Rejected, Rescheduled, Completed
+  String? rejectionReason;
+  DateTime? previousAppointmentDate;
+  String? previousAppointmentTime;
+  DateTime? completedAt;
+  String? completedBy;
+
   final DateTime createdAt;
+  DateTime? updatedAt;
 
   AppointmentModel({
     required this.id,
     required this.userId,
     required this.patientName,
+    this.patientEmail = '',
     required this.mobileNumber,
-    required this.preferredDateTime,
+    this.doctorId = '',
+    this.doctorName = '',
     required this.doctorSpecialty,
+    required this.preferredDateTime,
     this.symptomsSummary = '',
+    this.reportId = '',
     this.reportFileName = '',
     this.reportUrl = '',
     this.reportStoragePath = '',
     this.reportUploadedAt,
+    this.riskScore = 0.0,
+    this.riskLevel = 'Moderate Risk',
     required this.status,
+    this.rejectionReason,
+    this.previousAppointmentDate,
+    this.previousAppointmentTime,
+    this.completedAt,
+    this.completedBy,
     DateTime? createdAt,
+    this.updatedAt,
   }) : createdAt = createdAt ?? DateTime.now();
+}
+
+class ConsultationModel {
+  final String id; // consultationId
+  final String appointmentId;
+  final String patientId;
+  final String patientName;
+  final String doctorId;
+  final String doctorName;
+  final String doctorSpecialty;
+  final String clinicalAssessment;
+  final String clinicalNotes;
+  final String recommendations;
+  final String treatmentInstructions;
+  final bool followUpRequired;
+  final DateTime? followUpDate;
+  final String followUpNotes;
+  final String status; // Draft, Completed
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  ConsultationModel({
+    required this.id,
+    required this.appointmentId,
+    required this.patientId,
+    this.patientName = '',
+    required this.doctorId,
+    this.doctorName = '',
+    this.doctorSpecialty = '',
+    this.clinicalAssessment = '',
+    this.clinicalNotes = '',
+    this.recommendations = '',
+    this.treatmentInstructions = '',
+    this.followUpRequired = false,
+    this.followUpDate,
+    this.followUpNotes = '',
+    this.status = 'Draft',
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
 }
 
 class NotificationModel {
@@ -116,9 +187,16 @@ abstract class DatabaseService {
   Future<void> addAssessment(AssessmentModel assessment);
   
   Future<List<AppointmentModel>> getAppointments(String userId);
+  Future<List<AppointmentModel>> getDoctorAppointments(String doctorId);
   Future<List<AppointmentModel>> getAllAppointmentsAdmin();
   Future<void> addAppointment(AppointmentModel appointment);
-  Future<void> updateAppointmentStatus(String appointmentId, String status);
+  Future<void> updateAppointmentStatus(String appointmentId, String status, {String? rejectionReason});
+  Future<void> rescheduleAppointment(String appointmentId, DateTime newDateTime);
+
+  Future<ConsultationModel?> getConsultationByAppointmentId(String appointmentId);
+  Future<List<ConsultationModel>> getDoctorConsultations(String doctorId);
+  Future<void> saveConsultation(ConsultationModel consultation);
+  Future<void> completeConsultation(String consultationId, String appointmentId, String doctorId);
 
   Future<List<NotificationModel>> getNotifications(String userId);
   Future<void> addNotification(NotificationModel notification);
@@ -329,11 +407,99 @@ class MockDbService implements DatabaseService {
   }
 
   @override
-  Future<void> updateAppointmentStatus(String appointmentId, String status) async {
+  Future<void> updateAppointmentStatus(String appointmentId, String status, {String? rejectionReason}) async {
     await Future.delayed(const Duration(milliseconds: 400));
     final index = _appointments.indexWhere((e) => e.id == appointmentId);
     if (index != -1) {
       _appointments[index].status = status;
+      if (rejectionReason != null) {
+        _appointments[index].rejectionReason = rejectionReason;
+      }
+      _appointments[index].updatedAt = DateTime.now();
+    }
+  }
+
+  @override
+  Future<void> rescheduleAppointment(String appointmentId, DateTime newDateTime) async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    final index = _appointments.indexWhere((e) => e.id == appointmentId);
+    if (index != -1) {
+      _appointments[index].previousAppointmentDate = _appointments[index].preferredDateTime;
+      _appointments[index].preferredDateTime = newDateTime;
+      _appointments[index].status = 'Rescheduled';
+      _appointments[index].updatedAt = DateTime.now();
+    }
+  }
+
+  final List<ConsultationModel> _consultations = [];
+
+  @override
+  Future<List<AppointmentModel>> getDoctorAppointments(String doctorId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return _appointments.where((e) => e.doctorId == doctorId || e.doctorSpecialty.toLowerCase().contains(doctorId.toLowerCase())).toList()
+      ..sort((a, b) => b.preferredDateTime.compareTo(a.preferredDateTime));
+  }
+
+  @override
+  Future<ConsultationModel?> getConsultationByAppointmentId(String appointmentId) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    try {
+      return _consultations.firstWhere((c) => c.appointmentId == appointmentId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<List<ConsultationModel>> getDoctorConsultations(String doctorId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return _consultations.where((c) => c.doctorId == doctorId).toList()
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+  }
+
+  @override
+  Future<void> saveConsultation(ConsultationModel consultation) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    final idx = _consultations.indexWhere((c) => c.id == consultation.id || c.appointmentId == consultation.appointmentId);
+    if (idx != -1) {
+      _consultations[idx] = consultation;
+    } else {
+      _consultations.add(consultation);
+    }
+  }
+
+  @override
+  Future<void> completeConsultation(String consultationId, String appointmentId, String doctorId) async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    final apptIdx = _appointments.indexWhere((a) => a.id == appointmentId);
+    if (apptIdx != -1) {
+      _appointments[apptIdx].status = 'Completed';
+      _appointments[apptIdx].completedAt = DateTime.now();
+      _appointments[apptIdx].completedBy = doctorId;
+      _appointments[apptIdx].updatedAt = DateTime.now();
+    }
+    final cIdx = _consultations.indexWhere((c) => c.id == consultationId || c.appointmentId == appointmentId);
+    if (cIdx != -1) {
+      final old = _consultations[cIdx];
+      _consultations[cIdx] = ConsultationModel(
+        id: old.id,
+        appointmentId: old.appointmentId,
+        patientId: old.patientId,
+        patientName: old.patientName,
+        doctorId: old.doctorId,
+        doctorName: old.doctorName,
+        doctorSpecialty: old.doctorSpecialty,
+        clinicalAssessment: old.clinicalAssessment,
+        clinicalNotes: old.clinicalNotes,
+        recommendations: old.recommendations,
+        treatmentInstructions: old.treatmentInstructions,
+        followUpRequired: old.followUpRequired,
+        followUpDate: old.followUpDate,
+        followUpNotes: old.followUpNotes,
+        status: 'Completed',
+        createdAt: old.createdAt,
+        updatedAt: DateTime.now(),
+      );
     }
   }
 

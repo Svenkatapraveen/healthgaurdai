@@ -38,7 +38,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       if (!mounted) return;
       final state = AppStateProvider.of(context);
       if (state.currentUser != null) {
-        Navigator.of(context).pushReplacementNamed('/dashboard');
+        Navigator.of(context).pushNamedAndRemoveUntil('/dashboard', (route) => false);
       } else {
         Navigator.of(context).pushReplacementNamed('/welcome');
       }

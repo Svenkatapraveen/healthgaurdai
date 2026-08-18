@@ -89,9 +89,9 @@ class _LoginScreenState extends State<LoginScreen> {
           'Welcome back to HealthGuard AI!',
           () {
             if (state.currentUser!.isAdmin) {
-              Navigator.pushReplacementNamed(context, '/admin-dashboard');
+              Navigator.pushNamedAndRemoveUntil(context, '/admin-dashboard', (route) => false);
             } else {
-              Navigator.pushReplacementNamed(context, '/dashboard');
+              Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false);
             }
           }
         );
@@ -327,9 +327,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           final ok = await state.loginWithGoogle();
                           if (ok && context.mounted) {
                             if (state.currentUser!.isAdmin) {
-                              Navigator.pushReplacementNamed(context, '/admin-dashboard');
+                              Navigator.pushNamedAndRemoveUntil(context, '/admin-dashboard', (route) => false);
                             } else {
-                              Navigator.pushReplacementNamed(context, '/dashboard');
+                              Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false);
                             }
                           } else if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -916,7 +916,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       if (ok) {
         if (!mounted) return;
         if (state.currentUser != null && state.currentUser!.isAdmin) {
-          Navigator.pushReplacementNamed(context, '/admin-dashboard');
+          Navigator.pushNamedAndRemoveUntil(context, '/admin-dashboard', (route) => false);
         } else {
           await state.logout();
           if (!mounted) return;

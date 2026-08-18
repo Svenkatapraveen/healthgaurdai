@@ -131,7 +131,9 @@ class ProfileScreen extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: () async {
                 await state.logout();
-                Navigator.pushReplacementNamed(context, '/welcome');
+                if (context.mounted) {
+                  Navigator.pushNamedAndRemoveUntil(context, '/welcome', (route) => false);
+                }
               },
               icon: const Icon(Icons.logout),
               label: const Text('Sign Out of Account', style: TextStyle(fontWeight: FontWeight.bold)),

@@ -43,16 +43,27 @@ class _MainDashboardState extends State<MainDashboard> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.getBg(isDark),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: _buildBody(context, isDark, state, user),
-            ),
-            _buildBottomNavBar(context, isDark),
-          ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_currentIndex != 0) {
+          setState(() {
+            _currentIndex = 0;
+          });
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.getBg(isDark),
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: _buildBody(context, isDark, state, user),
+              ),
+              _buildBottomNavBar(context, isDark),
+            ],
+          ),
         ),
       ),
     );
@@ -605,130 +616,180 @@ class _MainDashboardState extends State<MainDashboard> {
     );
   }
 
-  Widget _buildUpcomingAppointmentCard(bool isDark, AppointmentModel? appt) {
-    if (appt == null) {
-      return Container(
-        height: 72,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isDark ? Colors.white.withOpacity(0.04) : Colors.grey.withOpacity(0.12)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.primaryTeal.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.calendar_month_outlined, color: AppColors.primaryTeal, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('No Upcoming Consultations', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  const SizedBox(height: 2),
-                  Text('Keep check of your routine appointments.', style: TextStyle(fontSize: 10, color: AppColors.getTextSecondary(isDark))),
-                ],
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () => setState(() => _currentIndex = 3),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryTeal,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: const Text('Book', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-            ),
-          ],
-        ),
-      );
-    }
+  Widget _buildUpcomingAppointmentCard(bool isDark, AppointmentModel? initialAppt) {
+    final state = AppStateProvider.of(context);
+    return StreamBuilder<List<AppointmentModel>>(
+      stream: state.streamUserAppointments(),
+      builder: (context, snapshot) {
+        final list = snapshot.data ?? (initialAppt != null ? [initialAppt] : state.appointments);
 
-    final isConfirmed = appt.status.toLowerCase() == 'confirmed';
-    final dateStr = '${appt.preferredDateTime.day}/${appt.preferredDateTime.month}/${appt.preferredDateTime.year} @ ${appt.preferredDateTime.hour.toString().padLeft(2, '0')}:${appt.preferredDateTime.minute.toString().padLeft(2, '0')}';
-
-    return Container(
-      height: 72,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark 
-              ? [const Color(0xFF102859).withOpacity(0.5), const Color(0xFF0F1A3A).withOpacity(0.5)]
-              : [Colors.blue.shade50.withOpacity(0.6), Colors.white],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primaryBlue.withOpacity(0.15)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
+        if (list.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: AppColors.primaryBlue.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.event_outlined, color: AppColors.primaryBlue, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Next: ${appt.doctorSpecialty}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  dateStr,
-                  style: TextStyle(fontSize: 10, color: AppColors.getTextSecondary(isDark)),
+              color: isDark ? AppColors.darkSurface : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: isDark ? Colors.white.withOpacity(0.04) : Colors.grey.withOpacity(0.12)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: (isConfirmed ? AppColors.riskLow : AppColors.riskModerate).withOpacity(0.12),
-              borderRadius: BorderRadius.circular(8),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryTeal.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.calendar_month_outlined, color: AppColors.primaryTeal, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('No Active Consultations', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 2),
+                      Text('Schedule an appointment with a specialist.', style: TextStyle(fontSize: 10, color: AppColors.getTextSecondary(isDark))),
+                    ],
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pushNamed(context, '/booking'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryTeal,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Book', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                ),
+              ],
             ),
-            child: Text(
-              appt.status.toUpperCase(),
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.bold,
-                color: isConfirmed ? AppColors.riskLow : AppColors.riskModerate,
+          );
+        }
+
+        return Column(
+          children: list.take(2).map((appt) {
+            Color statusColor = AppColors.riskModerate;
+            IconData statusIcon = Icons.hourglass_top_outlined;
+            if (appt.status == 'Approved') {
+              statusColor = AppColors.primaryGreen;
+              statusIcon = Icons.check_circle_outline;
+            } else if (appt.status == 'Pending') {
+              statusColor = AppColors.riskModerate;
+              statusIcon = Icons.hourglass_top_outlined;
+            } else if (appt.status == 'Rejected') {
+              statusColor = AppColors.riskCritical;
+              statusIcon = Icons.cancel_outlined;
+            } else if (appt.status == 'Rescheduled') {
+              statusColor = Colors.blueAccent;
+              statusIcon = Icons.update_outlined;
+            }
+
+            final dateStr = '${appt.preferredDateTime.day}/${appt.preferredDateTime.month}/${appt.preferredDateTime.year} @ ${appt.preferredDateTime.hour.toString().padLeft(2, '0')}:${appt.preferredDateTime.minute.toString().padLeft(2, '0')}';
+            final docTitle = appt.doctorName.isNotEmpty ? appt.doctorName : appt.doctorSpecialty;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark 
+                      ? [const Color(0xFF102859).withOpacity(0.5), const Color(0xFF0F1A3A).withOpacity(0.5)]
+                      : [Colors.blue.shade50.withOpacity(0.6), Colors.white],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: statusColor.withOpacity(0.3)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            ),
-          ),
-        ],
-      ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(statusIcon, color: statusColor, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              docTitle,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              'Specialty: ${appt.doctorSpecialty}',
+                              style: TextStyle(fontSize: 10, color: AppColors.getTextSecondary(isDark)),
+                            ),
+                            Text(
+                              dateStr,
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: statusColor.withOpacity(0.5)),
+                        ),
+                        child: Text(
+                          appt.status.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: statusColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (appt.status == 'Rejected' && appt.rejectionReason != null && appt.rejectionReason!.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Rejection Reason: ${appt.rejectionReason}',
+                      style: const TextStyle(fontSize: 10, color: AppColors.riskCritical, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                  if (appt.status == 'Rescheduled' && appt.previousAppointmentDate != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Rescheduled from: ${appt.previousAppointmentDate!.day}/${appt.previousAppointmentDate!.month}/${appt.previousAppointmentDate!.year}',
+                      style: const TextStyle(fontSize: 10, color: Colors.blueAccent, fontStyle: FontStyle.italic),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 
@@ -1212,7 +1273,7 @@ class _MainDashboardState extends State<MainDashboard> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: (isConfirmed ? AppColors.riskLow : AppColors.riskModerate).withOpacity(0.12),
+                                  color: (appt.status == 'Completed' ? Colors.green : (isConfirmed ? AppColors.riskLow : AppColors.riskModerate)).withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
@@ -1220,10 +1281,60 @@ class _MainDashboardState extends State<MainDashboard> {
                                   style: TextStyle(
                                     fontSize: 9,
                                     fontWeight: FontWeight.bold,
-                                    color: isConfirmed ? AppColors.riskLow : AppColors.riskModerate,
+                                    color: appt.status == 'Completed' ? Colors.green : (isConfirmed ? AppColors.riskLow : AppColors.riskModerate),
                                   ),
                                 ),
                               ),
+                              if (appt.status == 'Completed') ...[
+                                const SizedBox(height: 6),
+                                InkWell(
+                                  onTap: () async {
+                                    final consultation = await state.dbService.getConsultationByAppointmentId(appt.id);
+                                    if (context.mounted) {
+                                      showDialog(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          title: Text('Consultation Result - ${appt.doctorSpecialty}'),
+                                          content: SingleChildScrollView(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text('Doctor: ${consultation?.doctorName.isNotEmpty == true ? consultation!.doctorName : appt.doctorName}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                                Text('Specialty: ${consultation?.doctorSpecialty.isNotEmpty == true ? consultation!.doctorSpecialty : appt.doctorSpecialty}', style: const TextStyle(color: AppColors.primaryTeal, fontSize: 12)),
+                                                const Divider(),
+                                                const Text('Clinical Assessment:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                                Text(consultation?.clinicalAssessment.isNotEmpty == true ? consultation!.clinicalAssessment : 'Completed consultation.'),
+                                                const SizedBox(height: 10),
+                                                const Text('Recommendations:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                                Text(consultation?.recommendations.isNotEmpty == true ? consultation!.recommendations : 'Follow regular care.'),
+                                                const SizedBox(height: 10),
+                                                const Text('Treatment & Medication Instructions:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                                Text(consultation?.treatmentInstructions.isNotEmpty == true ? consultation!.treatmentInstructions : 'None specified.'),
+                                                if (consultation?.followUpRequired == true) ...[
+                                                  const SizedBox(height: 10),
+                                                  const Text('Follow-Up Plan:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.orange)),
+                                                  Text(consultation?.followUpNotes.isNotEmpty == true ? consultation!.followUpNotes : 'Follow-up requested by physician.'),
+                                                ],
+                                              ],
+                                            ),
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.of(ctx).pop(),
+                                              child: const Text('Close'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: const Text(
+                                    'View Doctor Result',
+                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primaryTeal, decoration: TextDecoration.underline),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ],
@@ -1355,7 +1466,9 @@ class _MainDashboardState extends State<MainDashboard> {
             ElevatedButton.icon(
               onPressed: () async {
                 await state.logout();
-                Navigator.pushReplacementNamed(context, '/welcome');
+                if (context.mounted) {
+                  Navigator.pushNamedAndRemoveUntil(context, '/welcome', (route) => false);
+                }
               },
               icon: const Icon(Icons.logout, size: 18),
               label: const Text('Sign Out of Account', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),

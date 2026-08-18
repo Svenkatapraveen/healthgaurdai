@@ -18,6 +18,8 @@ import 'screens/notifications_screen.dart';
 import 'screens/reminders_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/admin_dashboard.dart';
+import 'screens/doctor_login_screen.dart';
+import 'screens/doctor_dashboard.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
@@ -167,12 +169,14 @@ class _MyAppState extends State<MyApp> {
               '/history': (context) => const HealthHistoryScreen(),
               '/report': (context) => const PdfReportScreen(),
               '/booking': (context) => const AppointmentBookingScreen(),
-              '/recommendations': (context) => const DoctorRecommendationScreen(),
+              '/recommendations': (context) => const AppointmentBookingScreen(),
               '/emergency': (context) => const EmergencyAlertScreen(),
               '/notifications': (context) => const NotificationsScreen(),
               '/reminders': (context) => const MedicineReminderScreen(),
               '/profile': (context) => const ProfileScreen(),
               '/admin-dashboard': (context) => const AdminDashboardScreen(),
+              '/doctor-login': (context) => const DoctorLoginScreen(),
+              '/doctor-dashboard': (context) => const DoctorDashboardScreen(),
             },
           );
         },

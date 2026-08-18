@@ -1,724 +1,11 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../state/app_state.dart';
 import '../services/db_service.dart';
+import '../data/symptom_database.dart';
 
 // ==========================================
-// 1. MEDICAL SYMPTOM MODEL & DATABASE
-// ==========================================
-class MedicalSymptom {
-  final String name;
-  final String category;
-  final List<String> bodyLocations;
-  final Map<String, List<String>> followUpQuestions;
-
-  const MedicalSymptom({
-    required this.name,
-    required this.category,
-    required this.bodyLocations,
-    required this.followUpQuestions,
-  });
-}
-
-const List<MedicalSymptom> symptomDatabase = [
-  // ==================== HEAD ====================
-  MedicalSymptom(
-    name: 'Headache',
-    category: 'Neurological Symptoms',
-    bodyLocations: ['Head'],
-    followUpQuestions: {
-      'Which side is the pain on?': ['Left Side', 'Right Side', 'Front', 'Back', 'Entire Head'],
-      'How would you describe the pain?': ['Throbbing', 'Dull Ache', 'Sharp/Stabbing', 'Pressure'],
-      'Does light or noise worsen the pain?': ['Yes, both', 'Light only', 'Noise only', 'Neither'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Migraine',
-    category: 'Neurological Symptoms',
-    bodyLocations: ['Head'],
-    followUpQuestions: {
-      'Are you experiencing nausea or vomiting?': ['Yes', 'No'],
-      'Do you see flashing lights or blind spots (Aura)?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Dizziness',
-    category: 'Neurological Symptoms',
-    bodyLocations: ['Head'],
-    followUpQuestions: {
-      'Does the room feel like it is spinning (Vertigo)?': ['Yes', 'No'],
-      'Do you feel lightheaded or off-balance?': ['Lightheaded', 'Off-balance', 'Both'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Memory Loss',
-    category: 'Neurological Symptoms',
-    bodyLocations: ['Head'],
-    followUpQuestions: {
-      'Is the memory loss sudden or gradual?': ['Sudden', 'Gradual'],
-      'Does it affect daily tasks?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Insomnia',
-    category: 'Neurological Symptoms',
-    bodyLocations: ['Head'],
-    followUpQuestions: {
-      'How long have you had trouble sleeping?': ['Less than a week', '1-4 weeks', 'More than a month'],
-      'What is the main issue?': ['Falling asleep', 'Staying asleep', 'Waking up too early'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Confusion / Brain Fog',
-    category: 'Neurological Symptoms',
-    bodyLocations: ['Head'],
-    followUpQuestions: {
-      'Did this symptom start suddenly?': ['Yes', 'No'],
-      'Is it accompanied by fever or severe headache?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Toothache',
-    category: 'General Symptoms',
-    bodyLocations: ['Head'],
-    followUpQuestions: {
-      'Is it sensitive to hot or cold?': ['Hot and cold', 'Hot only', 'Cold only', 'Neither'],
-      'Is there visible facial swelling?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Jaw Pain / TMJ',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Head', 'Neck'],
-    followUpQuestions: {
-      'Does your jaw click or pop when opening?': ['Yes', 'No'],
-      'Is pain worse when chewing?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Scalp Tenderness',
-    category: 'Skin Symptoms',
-    bodyLocations: ['Head'],
-    followUpQuestions: {
-      'Is there visible redness or flaking?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Hair Loss',
-    category: 'Skin Symptoms',
-    bodyLocations: ['Head'],
-    followUpQuestions: {
-      'Is the hair thinning or falling out in patches?': ['Thinning', 'Patches', 'All over'],
-    },
-  ),
-
-  // ==================== EYES ====================
-  MedicalSymptom(
-    name: 'Eye Pain',
-    category: 'ENT & Eye Symptoms',
-    bodyLocations: ['Eyes'],
-    followUpQuestions: {
-      'Is there redness or discharge?': ['Redness and discharge', 'Redness only', 'Discharge only', 'Neither'],
-      'Is your vision blurry?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Blurred Vision',
-    category: 'ENT & Eye Symptoms',
-    bodyLocations: ['Eyes'],
-    followUpQuestions: {
-      'Is the blurring in one eye or both eyes?': ['One eye', 'Both eyes'],
-      'Is it sudden or gradual?': ['Sudden', 'Gradual'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Red Eyes / Conjunctivitis',
-    category: 'ENT & Eye Symptoms',
-    bodyLocations: ['Eyes'],
-    followUpQuestions: {
-      'Is there yellow/green discharge or crusting?': ['Yes', 'No'],
-      'Are your eyes itchy or gritty?': ['Itchy', 'Gritty', 'Both', 'Neither'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Watery / Itchy Eyes',
-    category: 'ENT & Eye Symptoms',
-    bodyLocations: ['Eyes'],
-    followUpQuestions: {
-      'Do you have seasonal allergies or sneezing?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Double Vision',
-    category: 'ENT & Eye Symptoms',
-    bodyLocations: ['Eyes'],
-    followUpQuestions: {
-      'Does double vision persist when one eye is covered?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Sensitivity to Light (Photophobia)',
-    category: 'ENT & Eye Symptoms',
-    bodyLocations: ['Eyes', 'Head'],
-    followUpQuestions: {
-      'Is it accompanied by a severe headache or eye pain?': ['Yes', 'No'],
-    },
-  ),
-
-  // ==================== EARS ====================
-  MedicalSymptom(
-    name: 'Ear Pain',
-    category: 'ENT & Eye Symptoms',
-    bodyLocations: ['Ears'],
-    followUpQuestions: {
-      'Is there any fluid draining from the ear?': ['Yes', 'No'],
-      'Is your hearing reduced?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Tinnitus (Ringing in Ears)',
-    category: 'ENT & Eye Symptoms',
-    bodyLocations: ['Ears'],
-    followUpQuestions: {
-      'Is the ringing continuous or constant?': ['Continuous', 'Intermittent'],
-      'Is it in one ear or both?': ['One ear', 'Both ears'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Ear Discharge',
-    category: 'ENT & Eye Symptoms',
-    bodyLocations: ['Ears'],
-    followUpQuestions: {
-      'What type of fluid is draining?': ['Clear liquid', 'Pus/Yellow', 'Bloody'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Hearing Loss',
-    category: 'ENT & Eye Symptoms',
-    bodyLocations: ['Ears'],
-    followUpQuestions: {
-      'Was the hearing loss sudden or gradual?': ['Sudden', 'Gradual'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Ear Fullness / Pressure',
-    category: 'ENT & Eye Symptoms',
-    bodyLocations: ['Ears'],
-    followUpQuestions: {
-      'Do you currently have a cold or sinus congestion?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Itchy Ears',
-    category: 'ENT & Eye Symptoms',
-    bodyLocations: ['Ears'],
-    followUpQuestions: {
-      'Have you recently used earplugs or swum in water?': ['Yes', 'No'],
-    },
-  ),
-
-  // ==================== NOSE ====================
-  MedicalSymptom(
-    name: 'Runny Nose (Rhinorrhea)',
-    category: 'ENT & Eye Symptoms',
-    bodyLocations: ['Nose'],
-    followUpQuestions: {
-      'Is the discharge clear, yellow, or green?': ['Clear', 'Yellow/Green'],
-      'How long has it been present?': ['1-3 days', '4-7 days', 'More than a week'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Nasal Congestion (Stuffy Nose)',
-    category: 'ENT & Eye Symptoms',
-    bodyLocations: ['Nose'],
-    followUpQuestions: {
-      'Does it alternate sides or affect both nostrils?': ['Alternates', 'Both nostrils'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Sneezing',
-    category: 'ENT & Eye Symptoms',
-    bodyLocations: ['Nose'],
-    followUpQuestions: {
-      'Are you experiencing itchy eyes or throat?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Loss of Smell (Anosmia)',
-    category: 'ENT & Eye Symptoms',
-    bodyLocations: ['Nose'],
-    followUpQuestions: {
-      'Did loss of taste occur as well?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Nosebleed (Epistaxis)',
-    category: 'ENT & Eye Symptoms',
-    bodyLocations: ['Nose'],
-    followUpQuestions: {
-      'How often does it occur?': ['First time', 'Occasional', 'Frequent'],
-      'Does bleeding stop within 10 minutes?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Sinus Pressure & Pain',
-    category: 'ENT & Eye Symptoms',
-    bodyLocations: ['Nose', 'Head'],
-    followUpQuestions: {
-      'Does bending forward worsen facial pressure?': ['Yes', 'No'],
-    },
-  ),
-
-  // ==================== NECK ====================
-  MedicalSymptom(
-    name: 'Neck Pain',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Neck'],
-    followUpQuestions: {
-      'Does it limit your neck movement?': ['Yes, severely', 'Mildly', 'No'],
-      'Does pain radiate into your arms or shoulders?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Sore Throat',
-    category: 'Respiratory Symptoms',
-    bodyLocations: ['Neck'],
-    followUpQuestions: {
-      'Is swallowing painful?': ['Severely painful', 'Mildly uncomfortable', 'No'],
-      'Are white patches visible on tonsils?': ['Yes', 'No', 'Unsure'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Difficulty Swallowing (Dysphagia)',
-    category: 'Respiratory Symptoms',
-    bodyLocations: ['Neck'],
-    followUpQuestions: {
-      'Is difficulty with solids, liquids, or both?': ['Solids only', 'Liquids only', 'Both'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Swollen Lymph Nodes',
-    category: 'General Symptoms',
-    bodyLocations: ['Neck'],
-    followUpQuestions: {
-      'Are the lumps tender to touch?': ['Tender', 'Not tender'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Hoarseness / Voice Loss',
-    category: 'Respiratory Symptoms',
-    bodyLocations: ['Neck'],
-    followUpQuestions: {
-      'How long have you been hoarse?': ['A few days', 'Over 2 weeks'],
-    },
-  ),
-
-  // ==================== CHEST ====================
-  MedicalSymptom(
-    name: 'Chest Pain',
-    category: 'Heart Symptoms',
-    bodyLocations: ['Chest'],
-    followUpQuestions: {
-      'Describe the sensation:': ['Pressure/Squeezing', 'Sharp/Stabbing', 'Burning', 'Aching'],
-      'Does the pain radiate anywhere?': ['Left Arm', 'Neck/Jaw', 'Back', 'No radiation'],
-      'Does it worsen with deep breathing or coughing?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Palpitations',
-    category: 'Heart Symptoms',
-    bodyLocations: ['Chest'],
-    followUpQuestions: {
-      'How do the palpitations feel?': ['Fluttering', 'Pounding/Hard beating', 'Skipped beats'],
-      'Are they accompanied by dizziness or chest discomfort?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Rapid Heartbeat (Tachycardia)',
-    category: 'Heart Symptoms',
-    bodyLocations: ['Chest'],
-    followUpQuestions: {
-      'Did it start suddenly while resting?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Chest Tightness',
-    category: 'Respiratory Symptoms',
-    bodyLocations: ['Chest'],
-    followUpQuestions: {
-      'Is it triggered by exercise, cold air, or allergens?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Cough',
-    category: 'Respiratory Symptoms',
-    bodyLocations: ['Chest', 'Neck'],
-    followUpQuestions: {
-      'Is the cough dry or productive?': ['Dry', 'Wet (produces mucus)'],
-      'Have you noticed blood in your mucus?': ['Yes', 'No'],
-      'Is the cough worse at night?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Shortness of Breath',
-    category: 'Respiratory Symptoms',
-    bodyLocations: ['Chest'],
-    followUpQuestions: {
-      'When does it occur?': ['At rest', 'During mild exertion', 'During heavy exercise'],
-      'Does it get worse when lying flat?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Wheezing',
-    category: 'Respiratory Symptoms',
-    bodyLocations: ['Chest'],
-    followUpQuestions: {
-      'Is it accompanied by a tight chest feeling?': ['Yes', 'No'],
-      'Do you have a history of asthma or allergies?': ['Yes', 'No'],
-    },
-  ),
-
-  // ==================== ABDOMEN ====================
-  MedicalSymptom(
-    name: 'Stomach Pain',
-    category: 'Digestive Symptoms',
-    bodyLocations: ['Abdomen'],
-    followUpQuestions: {
-      'Where is the pain located?': ['Upper Abdomen', 'Lower Abdomen', 'Around Navel', 'All over'],
-      'Is it worse before or after eating?': ['Before eating', 'After eating', 'No change'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Stomach Bloating',
-    category: 'Digestive Symptoms',
-    bodyLocations: ['Abdomen'],
-    followUpQuestions: {
-      'Is the bloating constant or does it come and go?': ['Constant', 'Comes and goes'],
-      'Is it associated with specific foods?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Stomach Cramps',
-    category: 'Digestive Symptoms',
-    bodyLocations: ['Abdomen'],
-    followUpQuestions: {
-      'Are the cramps relieved by bowel movements?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Nausea',
-    category: 'Digestive Symptoms',
-    bodyLocations: ['Abdomen', 'Head'],
-    followUpQuestions: {
-      'Have you vomited?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Vomiting',
-    category: 'Digestive Symptoms',
-    bodyLocations: ['Abdomen'],
-    followUpQuestions: {
-      'How many times in the last 24 hours?': ['1-2 times', '3-5 times', 'More than 5 times'],
-      'Are you able to keep fluids down?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Diarrhea',
-    category: 'Digestive Symptoms',
-    bodyLocations: ['Abdomen'],
-    followUpQuestions: {
-      'How many watery stools per day?': ['1-3 times', '4-6 times', '7+ times'],
-      'Is there fever or severe abdominal pain?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Constipation',
-    category: 'Digestive Symptoms',
-    bodyLocations: ['Abdomen'],
-    followUpQuestions: {
-      'How many days since last bowel movement?': ['2-3 days', '4-6 days', '7+ days'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Heartburn / Acid Reflux',
-    category: 'Digestive Symptoms',
-    bodyLocations: ['Abdomen', 'Chest'],
-    followUpQuestions: {
-      'Is burning worse when lying down after meals?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Indigestion / Dyspepsia',
-    category: 'Digestive Symptoms',
-    bodyLocations: ['Abdomen'],
-    followUpQuestions: {
-      'Do you experience early fullness during meals?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Loss of Appetite',
-    category: 'Digestive Symptoms',
-    bodyLocations: ['Abdomen'],
-    followUpQuestions: {
-      'Have you lost weight unintentionally?': ['Yes', 'No'],
-    },
-  ),
-
-  // ==================== ARMS ====================
-  MedicalSymptom(
-    name: 'Arm Pain',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Arms'],
-    followUpQuestions: {
-      'Which arm is affected?': ['Left Arm', 'Right Arm', 'Both Arms'],
-      'Is the pain accompanied by chest pressure?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Numbness / Tingling in Arm',
-    category: 'Neurological Symptoms',
-    bodyLocations: ['Arms'],
-    followUpQuestions: {
-      'Is it constant or triggered by position?': ['Constant', 'Triggered by position'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Arm Weakness',
-    category: 'Neurological Symptoms',
-    bodyLocations: ['Arms'],
-    followUpQuestions: {
-      'Is the weakness in one arm or both?': ['One arm', 'Both arms'],
-      'Did it start suddenly?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Elbow / Wrist Joint Pain',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Arms'],
-    followUpQuestions: {
-      'Is there joint swelling or redness?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Tremors / Hand Shaking',
-    category: 'Neurological Symptoms',
-    bodyLocations: ['Arms', 'Hands'],
-    followUpQuestions: {
-      'Do tremors occur at rest or during movement?': ['At rest', 'During movement'],
-    },
-  ),
-
-  // ==================== HANDS ====================
-  MedicalSymptom(
-    name: 'Hand Pain',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Hands'],
-    followUpQuestions: {
-      'Is pain worse in the morning?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Finger Stiffness',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Hands'],
-    followUpQuestions: {
-      'How long does morning stiffness last?': ['Less than 30 mins', 'Over an hour'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Numbness in Fingers (Carpal Tunnel)',
-    category: 'Neurological Symptoms',
-    bodyLocations: ['Hands'],
-    followUpQuestions: {
-      'Does it wake you up at night?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Cold Hands & Fingers',
-    category: 'General Symptoms',
-    bodyLocations: ['Hands'],
-    followUpQuestions: {
-      'Do fingers change color (white/blue) in cold?': ['Yes', 'No'],
-    },
-  ),
-
-  // ==================== LEGS ====================
-  MedicalSymptom(
-    name: 'Knee Pain',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Legs'],
-    followUpQuestions: {
-      'Is there swelling or stiffness?': ['Swelling and stiffness', 'Swelling only', 'Stiffness only', 'Neither'],
-      'Is pain worse when climbing stairs?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Leg Cramps / Muscle Spasms',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Legs'],
-    followUpQuestions: {
-      'Do cramps occur mainly at night?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Leg Swelling (Edema)',
-    category: 'General Symptoms',
-    bodyLocations: ['Legs'],
-    followUpQuestions: {
-      'Is swelling in one leg or both legs?': ['One leg', 'Both legs'],
-      'Is there redness or localized heat?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Calf Pain / Soreness',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Legs'],
-    followUpQuestions: {
-      'Is there swelling, heat, or deep pain in the calf?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Numbness / Tingling in Legs',
-    category: 'Neurological Symptoms',
-    bodyLocations: ['Legs'],
-    followUpQuestions: {
-      'Does pain radiate from lower back down the leg (Sciatica)?': ['Yes', 'No'],
-    },
-  ),
-
-  // ==================== FEET ====================
-  MedicalSymptom(
-    name: 'Foot Pain',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Feet'],
-    followUpQuestions: {
-      'Is pain in the arch, heel, or toes?': ['Arch', 'Heel', 'Toes', 'Entire Foot'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Heel Pain (Plantar Fasciitis)',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Feet'],
-    followUpQuestions: {
-      'Is pain worst during first steps in the morning?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Swollen Feet & Ankles',
-    category: 'General Symptoms',
-    bodyLocations: ['Feet', 'Legs'],
-    followUpQuestions: {
-      'Does swelling improve after elevating legs?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Cold Feet & Toes',
-    category: 'General Symptoms',
-    bodyLocations: ['Feet'],
-    followUpQuestions: {
-      'Do you have a diagnosis of peripheral artery disease or diabetes?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Tingling / Burning in Toes (Neuropathy)',
-    category: 'Neurological Symptoms',
-    bodyLocations: ['Feet'],
-    followUpQuestions: {
-      'Is burning sensation worse at night?': ['Yes', 'No'],
-    },
-  ),
-
-  // ==================== BACK ====================
-  MedicalSymptom(
-    name: 'Back Pain',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Back'],
-    followUpQuestions: {
-      'Where is the pain?': ['Upper Back', 'Mid Back', 'Lower Back'],
-      'Does the pain travel down your leg?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Upper Back Pain',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Back', 'Neck'],
-    followUpQuestions: {
-      'Is pain posture-related or after lifting heavy objects?': ['Posture', 'Lifting', 'Both'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Lower Back Pain (Lumbago)',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Back'],
-    followUpQuestions: {
-      'Does pain worsen with bending or sitting?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Back Muscle Spasms',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Back'],
-    followUpQuestions: {
-      'Does spasm lock your movement?': ['Yes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Spinal Stiffness',
-    category: 'Pain Symptoms',
-    bodyLocations: ['Back'],
-    followUpQuestions: {
-      'Does morning stiffness take longer than 45 minutes to ease up?': ['Yes', 'No'],
-    },
-  ),
-
-  // ==================== SYSTEMIC & MULTI-LOCATION ====================
-  MedicalSymptom(
-    name: 'Fever',
-    category: 'General Symptoms',
-    bodyLocations: ['Head', 'Chest', 'Abdomen', 'Legs', 'Arms', 'Neck', 'Ears', 'Nose'],
-    followUpQuestions: {
-      'What is your approximate temperature?': ['Low grade (< 100.4°F)', 'High grade (100.4°F - 103°F)', 'Severe (> 103°F)', 'Not measured'],
-      'Are you experiencing chills or sweating?': ['Chills only', 'Sweating only', 'Both', 'Neither'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Fatigue',
-    category: 'General Symptoms',
-    bodyLocations: ['Head', 'Legs', 'Arms', 'Chest', 'Abdomen'],
-    followUpQuestions: {
-      'How long have you felt abnormally tired?': ['A few days', '1-2 weeks', 'More than a month'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Skin Rash',
-    category: 'Skin Symptoms',
-    bodyLocations: ['Arms', 'Hands', 'Legs', 'Feet', 'Abdomen', 'Chest', 'Neck', 'Head', 'Back'],
-    followUpQuestions: {
-      'Is the rash itchy?': ['Extremely itchy', 'Mildly itchy', 'Not itchy'],
-      'Is it raised or flat?': ['Raised bumps', 'Flat spots', 'Blisters'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Anxiety',
-    category: 'Mental Health Symptoms',
-    bodyLocations: ['Head', 'Chest'],
-    followUpQuestions: {
-      'Do you experience physical symptoms like sweating or rapid heartbeat?': ['Yes, often', 'Sometimes', 'No'],
-    },
-  ),
-  MedicalSymptom(
-    name: 'Depression',
-    category: 'Mental Health Symptoms',
-    bodyLocations: ['Head'],
-    followUpQuestions: {
-      'Have you lost interest in activities you normally enjoy?': ['Yes', 'No'],
-    },
-  ),
-];
-
-// ==========================================
-// 2. ASSESSMENT WIZARD STATEFUL WIDGET
+// ASSESSMENT WIZARD STATEFUL WIDGET
 // ==========================================
 class AssessmentWizard extends StatefulWidget {
   final bool isNested;
@@ -746,7 +33,7 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
   // Stores answers: symptomName -> question -> answer
   final Map<String, Map<String, String>> _followUpAnswers = {};
   double _severity = 5.0; // 1-10 slider
-  String _painLocation = 'Center';
+  final String _painLocation = 'Center';
   String _duration = 'Days';
   String _pattern = 'Intermittent';
 
@@ -761,25 +48,14 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
 
   final List<String> _historyOptions = [
     'Diabetes',
-'Hypertension',
+    'Hypertension',
     'Asthma',
     'Heart Disease',
     'Kidney Disease',
     'Thyroid Disorder',
   ];
 
-  final List<String> _categories = [
-    'All',
-    'General Symptoms',
-    'Pain Symptoms',
-    'Heart Symptoms',
-    'Respiratory Symptoms',
-    'Digestive Symptoms',
-    'Neurological Symptoms',
-    'Skin Symptoms',
-    'Mental Health Symptoms',
-    'ENT & Eye Symptoms',
-  ];
+  final List<String> _categories = symptomCategoriesList;
 
   @override
   void initState() {
@@ -818,8 +94,8 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
       bool allAnswered = true;
       for (var s in _selectedPrimary) {
         final dbSymptom = symptomDatabase.firstWhere((element) => element.name == s, 
-            orElse: () => const MedicalSymptom(name: '', category: '', bodyLocations: [], followUpQuestions: {}));
-        final qMap = dbSymptom.followUpQuestions;
+            orElse: () => const MedicalSymptom(name: '', category: '', bodyLocations: []));
+        final qMap = _getEffectiveFollowUpQuestions(dbSymptom);
         final ansMap = _followUpAnswers[s] ?? {};
         if (ansMap.length < qMap.length) {
           allAnswered = false;
@@ -835,6 +111,17 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
       }
       setState(() => _currentStep = 3);
     }
+  }
+
+  Map<String, List<String>> _getEffectiveFollowUpQuestions(MedicalSymptom dbSymptom) {
+    final Map<String, List<String>> qMap = Map.from(dbSymptom.followUpQuestions);
+    if (dbSymptom.sideApplicable && !qMap.keys.any((k) => k.toLowerCase().contains('side'))) {
+      qMap['Which side is affected?'] = ['Left Side', 'Right Side', 'Both Sides', 'Center / N/A'];
+    }
+    if (qMap.isEmpty) {
+      qMap['How would you rate this symptom?'] = ['Mild / Occasional', 'Moderate', 'Severe / Frequent'];
+    }
+    return qMap;
   }
 
   void _prevStep() {
@@ -912,60 +199,65 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
       'Asthma / Bronchial spasm': 5.0,
     };
 
-    // Diagnostics Mapping Heuristics
-    if (_selectedPrimary.contains('Chest Pain')) {
-      recommendedDoctor = 'Cardiologist';
-      possibleCauses.addAll(['Angina Pectoris', 'Myocardial Strain', 'Acid Reflux / GERD']);
-      recommendations.addAll(['Rest immediately in an upright position', 'Schedule an ECG & cardiac enzyme evaluation', 'Avoid caffeine and tobacco consumption']);
-      diseaseProbability['Cardiac Strain / Angina'] = 75.0;
-      diseaseProbability['Gastroesophageal Reflux'] = 35.0;
-    } 
-    
-    if (_selectedPrimary.contains('Headache') || _selectedPrimary.contains('Migraine')) {
-      recommendedDoctor = 'Neurologist';
-      possibleCauses.addAll(['Migraine Episode', 'Tension-type Headache', 'Sinusitis Pressure']);
-      recommendations.addAll(['Rest in a dark, quiet room with cold compress', 'Maintain a symptom diary to identify trigger foods', 'Ensure consistent hydration']);
-      diseaseProbability['Migraine Tension'] = 80.0;
-      diseaseProbability['Influenza / Viral Fever'] = 25.0;
-    }
+    // Diagnostics Mapping Heuristics across all categories
+    for (var sName in _selectedPrimary) {
+      final dbSymptom = symptomDatabase.firstWhere((element) => element.name == sName, 
+          orElse: () => const MedicalSymptom(name: '', category: '', bodyLocations: []));
+      final cat = dbSymptom.category;
 
-    if (_selectedPrimary.contains('Cough') || _selectedPrimary.contains('Shortness of Breath') || _selectedPrimary.contains('Wheezing')) {
-      recommendedDoctor = 'Pulmonologist';
-      possibleCauses.addAll(['Acute Bronchitis', 'Asthma Flare-up', 'Allergic Response']);
-      recommendations.addAll(['Avoid cold environments and direct AC drafts', 'Inhale steam or use humidifier', 'Monitor peak flow reading if asthmatic']);
-      diseaseProbability['Asthma / Bronchial spasm'] = 70.0;
-      diseaseProbability['Influenza / Viral Fever'] = 45.0;
-    }
-
-    if (_selectedPrimary.contains('Stomach Pain') || _selectedPrimary.contains('Vomiting') || _selectedPrimary.contains('Stomach Bloating')) {
-      recommendedDoctor = 'Gastroenterologist';
-      possibleCauses.addAll(['Gastritis', 'Gastroenteritis', 'Irritable Bowel Syndrome']);
-      recommendations.addAll(['Eat small, bland meals (BRAT diet)', 'Avoid spicy, greasy, or acidic meals', 'Stay hydrated with electrolyte solutions']);
-      diseaseProbability['Gastroesophageal Reflux'] = 65.0;
-    }
-
-    if (_selectedPrimary.contains('Skin Rash')) {
-      recommendedDoctor = 'Dermatologist';
-      possibleCauses.addAll(['Contact Dermatitis', 'Allergic Hives', 'Eczema Flare-up']);
-      recommendations.addAll(['Apply mild, fragrance-free moisturizers', 'Avoid scratching affected regions', 'Review recent cosmetic or detergent switches']);
-    }
-
-    if (_selectedPrimary.contains('Anxiety') || _selectedPrimary.contains('Depression')) {
-      recommendedDoctor = 'Psychiatrist / Therapist';
-      possibleCauses.addAll(['Stress-induced Anxiety', 'Clinical Depression', 'Fatigue-associated Burnout']);
-      recommendations.addAll(['Practice daily mindfulness or breathing cycles', 'Maintain structured sleep and waking routines', 'Consult a counselor']);
-    }
-
-    if (_selectedPrimary.contains('Eye Pain')) {
-      recommendedDoctor = 'Ophthalmologist';
-      possibleCauses.addAll(['Conjunctivitis', 'Corneal Strain', 'Dry Eye Syndrome']);
-      recommendations.addAll(['Restrict digital display screen-time', 'Avoid wearing contact lenses temporarily', 'Use sterile lubricating eye drops']);
-    }
-
-    if (_selectedPrimary.contains('Ear Pain')) {
-      recommendedDoctor = 'ENT Specialist';
-      possibleCauses.addAll(['Otitis Media (Middle Ear Infection)', 'Eustachian Tube Dysfunction', 'Wax Build-up']);
-      recommendations.addAll(['Keep ear dry during showers', 'Avoid inserting cotton swabs or probes', 'Use warm compress outside the ear']);
+      if (cat.contains('Heart') || cat.contains('Circulatory') || sName.contains('Chest Pain') || sName.contains('Palpitations')) {
+        recommendedDoctor = 'Cardiologist';
+        possibleCauses.addAll(['Angina Pectoris', 'Myocardial Strain', 'Acid Reflux / GERD']);
+        recommendations.addAll(['Rest immediately in an upright position', 'Schedule an ECG & cardiac enzyme evaluation', 'Avoid caffeine and tobacco']);
+        diseaseProbability['Cardiac Strain / Angina'] = 75.0;
+      } else if (cat.contains('Neurological') || sName.contains('Headache') || sName.contains('Migraine') || sName.contains('Dizziness')) {
+        recommendedDoctor = 'Neurologist';
+        possibleCauses.addAll(['Migraine Episode', 'Tension Headache', 'Vertigo / Vestibular Strain']);
+        recommendations.addAll(['Rest in a dark, quiet room with cold compress', 'Maintain a symptom diary to identify trigger foods', 'Ensure consistent hydration']);
+        diseaseProbability['Migraine Tension'] = 80.0;
+      } else if (cat.contains('Respiratory') || cat.contains('Lung') || sName.contains('Cough') || sName.contains('Breath')) {
+        recommendedDoctor = 'Pulmonologist';
+        possibleCauses.addAll(['Acute Bronchitis', 'Asthma Flare-up', 'Upper Respiratory Infection']);
+        recommendations.addAll(['Avoid cold environments and air pollution', 'Inhale steam or use humidifier', 'Monitor peak flow reading if asthmatic']);
+        diseaseProbability['Asthma / Bronchial spasm'] = 70.0;
+      } else if (cat.contains('Digestive') || cat.contains('Abdominal') || sName.contains('Stomach')) {
+        recommendedDoctor = 'Gastroenterologist';
+        possibleCauses.addAll(['Gastritis', 'Gastroenteritis', 'Irritable Bowel Syndrome']);
+        recommendations.addAll(['Eat small, bland meals (BRAT diet)', 'Avoid spicy, greasy, or acidic meals', 'Stay hydrated with electrolyte solutions']);
+        diseaseProbability['Gastroesophageal Reflux'] = 65.0;
+      } else if (cat.contains('Liver') || cat.contains('Gallbladder') || cat.contains('Pancreas')) {
+        recommendedDoctor = 'Gastroenterologist / Hepatologist';
+        possibleCauses.addAll(['Gallbladder Biliary Colic', 'Hepatic Dysfunction', 'Pancreatic Irritation']);
+        recommendations.addAll(['Avoid high-fat meals', 'Schedule an abdominal ultrasound', 'Avoid alcohol consumption']);
+      } else if (cat.contains('Kidney') || cat.contains('Urinary')) {
+        recommendedDoctor = 'Nephrologist / Urologist';
+        possibleCauses.addAll(['Urinary Tract Infection (UTI)', 'Renal Calculus (Kidney Stone)', 'Cystitis']);
+        recommendations.addAll(['Increase fluid intake to 3L daily', 'Schedule urine analysis', 'Avoid delaying urination']);
+      } else if (cat.contains('Arm') || cat.contains('Hand') || cat.contains('Back') || cat.contains('Leg') || cat.contains('Foot') || cat.contains('Hip') || cat.contains('Spine')) {
+        recommendedDoctor = 'Orthopedist / Rheumatologist';
+        possibleCauses.addAll(['Musculoskeletal Strain', 'Joint Inflammation / Arthritis', 'Sciatica Nerve Compression']);
+        recommendations.addAll(['Apply warm/cold compresses', 'Avoid heavy lifting or sudden twisting', 'Perform gentle mobility stretches']);
+      } else if (cat.contains('Skin') || cat.contains('Hair') || cat.contains('Nail')) {
+        recommendedDoctor = 'Dermatologist';
+        possibleCauses.addAll(['Contact Dermatitis', 'Allergic Urticaria', 'Eczema Flare-up']);
+        recommendations.addAll(['Apply mild, fragrance-free moisturizers', 'Avoid scratching affected regions', 'Review recent cosmetic or detergent switches']);
+      } else if (cat.contains('Eye')) {
+        recommendedDoctor = 'Ophthalmologist';
+        possibleCauses.addAll(['Conjunctivitis', 'Corneal Strain', 'Dry Eye Syndrome']);
+        recommendations.addAll(['Restrict digital screen-time', 'Avoid wearing contact lenses temporarily', 'Use sterile lubricating eye drops']);
+      } else if (cat.contains('Ear') || cat.contains('Nose') || cat.contains('Throat') || cat.contains('Sinus') || cat.contains('Mouth')) {
+        recommendedDoctor = 'ENT Specialist';
+        possibleCauses.addAll(['Otitis Media', 'Sinusitis Pressure', 'Pharyngitis / Tonsillitis']);
+        recommendations.addAll(['Keep ear dry during showers', 'Inhale steam or use saline spray', 'Gargle with warm salt water']);
+      } else if (cat.contains('Reproductive') || cat.contains('Sexual')) {
+        recommendedDoctor = 'Gynecologist / Urologist';
+        possibleCauses.addAll(['Pelvic Inflammatory Response', 'Hormonal Imbalance', 'Prostatic / Testicular Strain']);
+        recommendations.addAll(['Schedule a specialized clinical consultation', 'Rest and maintain hydration']);
+      } else if (cat.contains('Mental') || cat.contains('Psychological')) {
+        recommendedDoctor = 'Psychiatrist / Therapist';
+        possibleCauses.addAll(['Stress-Induced Anxiety', 'Clinical Depression', 'Burnout Syndrome']);
+        recommendations.addAll(['Practice daily mindfulness or breathing cycles', 'Maintain structured sleep routines', 'Consult a counselor']);
+      }
     }
 
     // Default Fallbacks
@@ -1042,7 +334,9 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
     }
 
     // Navigate to results
-    Navigator.pushReplacementNamed(context, '/results', arguments: newAssessment);
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/results', arguments: newAssessment);
+    }
   }
 
   @override
@@ -1060,7 +354,13 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
             ? null
             : IconButton(
                 icon: Icon(Icons.close, color: AppColors.getTextPrimary(isDark)),
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  } else {
+                    Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false);
+                  }
+                },
               ),
       ),
       body: Column(
@@ -1177,34 +477,14 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
   // STEP 1: SEARCH, CATEGORIES, & BODY SELECTOR
   // ==========================================
   Widget _buildStep1(bool isDark) {
-    final String q = _searchQuery.trim().toLowerCase();
 
-    // Universal search & location/category filtering
-    final List<MedicalSymptom> filteredSymptoms = symptomDatabase.where((s) {
-      if (q.isNotEmpty) {
-        final matchesName = s.name.toLowerCase().contains(q);
-        final matchesCat = s.category.toLowerCase().contains(q);
-        final matchesLoc = s.bodyLocations.any((loc) => loc.toLowerCase().contains(q));
-        if (!matchesName && !matchesCat && !matchesLoc) return false;
-      }
-      if (_selectedLocation != null && q.isEmpty) {
-        if (!s.bodyLocations.contains(_selectedLocation)) return false;
-      }
-      if (_selectedCategory != 'All' && q.isEmpty) {
-        if (s.category != _selectedCategory) return false;
-      }
-      return true;
-    }).toList();
+    final List<MedicalSymptom> filteredSymptoms = SymptomDatabaseService.filterSymptoms(
+      query: _searchQuery,
+      category: _selectedCategory,
+      location: _selectedLocation,
+    );
 
-    // Suggestions autocomplete based on typing (matches name, category, or body location)
-    final List<MedicalSymptom> suggestions = q.isEmpty
-        ? []
-        : symptomDatabase.where((s) {
-            final matchesName = s.name.toLowerCase().contains(q);
-            final matchesCat = s.category.toLowerCase().contains(q);
-            final matchesLoc = s.bodyLocations.any((loc) => loc.toLowerCase().contains(q));
-            return matchesName || matchesCat || matchesLoc;
-          }).toList();
+    final List<MedicalSymptom> suggestions = SymptomDatabaseService.getSuggestions(_searchQuery);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1508,10 +788,9 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
         ),
       );
     }
-
     return Container(
-      constraints: const BoxConstraints(maxWidth: 320),
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      constraints: const BoxConstraints(maxWidth: 340),
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 14),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -1520,20 +799,30 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
       child: _isFrontView
           ? Column(
               children: [
+                // Front View: Head, Eyes, Ears, Nose, Mouth
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    buildBodyPartButton('Ears', 40, 26),
-                    const SizedBox(width: 8),
-                    buildBodyPartButton('Head', 50, 50, shape: BoxShape.circle),
-                    const SizedBox(width: 8),
-                    buildBodyPartButton('Eyes', 40, 26),
+                    buildBodyPartButton('Ears', 42, 26),
+                    const SizedBox(width: 6),
+                    buildBodyPartButton('Head', 52, 52, shape: BoxShape.circle),
+                    const SizedBox(width: 6),
+                    buildBodyPartButton('Eyes', 42, 26),
                   ],
                 ),
                 const SizedBox(height: 6),
-                buildBodyPartButton('Nose', 45, 22),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    buildBodyPartButton('Nose', 45, 22),
+                    const SizedBox(width: 8),
+                    buildBodyPartButton('Mouth', 45, 22),
+                  ],
+                ),
                 const SizedBox(height: 6),
-                buildBodyPartButton('Neck', 45, 20),
+                buildBodyPartButton('Neck', 50, 22),
+                const SizedBox(height: 6),
+                buildBodyPartButton('Shoulders', 90, 24),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1541,45 +830,51 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
                   children: [
                     Column(
                       children: [
-                        buildBodyPartButton('Arms', 32, 70),
+                        buildBodyPartButton('Arms', 34, 70),
                         const SizedBox(height: 6),
-                        buildBodyPartButton('Hands', 32, 24),
+                        buildBodyPartButton('Hands', 34, 26),
                       ],
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Column(
                       children: [
-                        buildBodyPartButton('Chest', 80, 44),
+                        buildBodyPartButton('Chest', 85, 46),
                         const SizedBox(height: 6),
-                        buildBodyPartButton('Abdomen', 80, 48),
+                        buildBodyPartButton('Abdomen', 85, 52),
                       ],
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Column(
                       children: [
-                        buildBodyPartButton('Arms', 32, 70),
+                        buildBodyPartButton('Arms', 34, 70),
                         const SizedBox(height: 6),
-                        buildBodyPartButton('Hands', 32, 24),
+                        buildBodyPartButton('Hands', 34, 26),
                       ],
                     ),
                   ],
                 ),
+                const SizedBox(height: 8),
+                buildBodyPartButton('Hips', 95, 26),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Column(
                       children: [
-                        buildBodyPartButton('Legs', 38, 80),
-                        const SizedBox(height: 6),
+                        buildBodyPartButton('Legs', 38, 50),
+                        const SizedBox(height: 4),
+                        buildBodyPartButton('Knees', 38, 22),
+                        const SizedBox(height: 4),
                         buildBodyPartButton('Feet', 38, 24),
                       ],
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 14),
                     Column(
                       children: [
-                        buildBodyPartButton('Legs', 38, 80),
-                        const SizedBox(height: 6),
+                        buildBodyPartButton('Legs', 38, 50),
+                        const SizedBox(height: 4),
+                        buildBodyPartButton('Knees', 38, 22),
+                        const SizedBox(height: 4),
                         buildBodyPartButton('Feet', 38, 24),
                       ],
                     ),
@@ -1589,28 +884,73 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
             )
           : Column(
               children: [
+                // Back View: Head, Neck, Shoulders, Back (Upper/Mid/Lower), Arms, Elbows, Hands, Hips, Legs, Knees, Feet
                 buildBodyPartButton('Head', 55, 55, shape: BoxShape.circle),
                 const SizedBox(height: 6),
-                buildBodyPartButton('Neck', 45, 20),
+                buildBodyPartButton('Neck', 50, 22),
+                const SizedBox(height: 6),
+                buildBodyPartButton('Shoulders', 90, 24),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    buildBodyPartButton('Arms', 32, 80),
-                    const SizedBox(width: 10),
-                    buildBodyPartButton('Back', 85, 100),
-                    const SizedBox(width: 10),
-                    buildBodyPartButton('Arms', 32, 80),
+                    Column(
+                      children: [
+                        buildBodyPartButton('Arms', 34, 45),
+                        const SizedBox(height: 4),
+                        buildBodyPartButton('Elbows', 34, 22),
+                        const SizedBox(height: 4),
+                        buildBodyPartButton('Hands', 34, 26),
+                      ],
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      children: [
+                        buildBodyPartButton('Upper Back', 90, 32),
+                        const SizedBox(height: 4),
+                        buildBodyPartButton('Middle Back', 90, 32),
+                        const SizedBox(height: 4),
+                        buildBodyPartButton('Lower Back', 90, 32),
+                      ],
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      children: [
+                        buildBodyPartButton('Arms', 34, 45),
+                        const SizedBox(height: 4),
+                        buildBodyPartButton('Elbows', 34, 22),
+                        const SizedBox(height: 4),
+                        buildBodyPartButton('Hands', 34, 26),
+                      ],
+                    ),
                   ],
                 ),
+                const SizedBox(height: 8),
+                buildBodyPartButton('Hips', 95, 26),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    buildBodyPartButton('Legs', 38, 80),
-                    const SizedBox(width: 16),
-                    buildBodyPartButton('Legs', 38, 80),
+                    Column(
+                      children: [
+                        buildBodyPartButton('Legs', 38, 50),
+                        const SizedBox(height: 4),
+                        buildBodyPartButton('Knees', 38, 22),
+                        const SizedBox(height: 4),
+                        buildBodyPartButton('Feet', 38, 24),
+                      ],
+                    ),
+                    const SizedBox(width: 14),
+                    Column(
+                      children: [
+                        buildBodyPartButton('Legs', 38, 50),
+                        const SizedBox(height: 4),
+                        buildBodyPartButton('Knees', 38, 22),
+                        const SizedBox(height: 4),
+                        buildBodyPartButton('Feet', 38, 24),
+                      ],
+                    ),
                   ],
                 ),
               ],
@@ -1689,12 +1029,10 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
         ..._selectedPrimary.map((symptomName) {
           final dbSymptom = symptomDatabase.firstWhere(
             (element) => element.name == symptomName,
-            orElse: () => const MedicalSymptom(name: '', category: '', bodyLocations: [], followUpQuestions: {}),
+            orElse: () => const MedicalSymptom(name: '', category: '', bodyLocations: []),
           );
 
-          if (dbSymptom.name.isEmpty || dbSymptom.followUpQuestions.isEmpty) {
-            return const SizedBox();
-          }
+          final effectiveQuestions = _getEffectiveFollowUpQuestions(dbSymptom);
 
           return Container(
             margin: const EdgeInsets.only(bottom: 24),
@@ -1723,7 +1061,7 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
                 ),
                 const Divider(height: 24),
                 
-                ...dbSymptom.followUpQuestions.entries.map((questionEntry) {
+                ...effectiveQuestions.entries.map((questionEntry) {
                   final qText = questionEntry.key;
                   final options = questionEntry.value;
                   final currentAnswer = _followUpAnswers[symptomName]?[qText];

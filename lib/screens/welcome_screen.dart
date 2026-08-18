@@ -206,9 +206,9 @@ class WelcomeScreen extends StatelessWidget {
                           final ok = await state.loginWithGoogle();
                           if (ok && context.mounted) {
                             if (state.currentUser!.isAdmin) {
-                              Navigator.pushReplacementNamed(context, '/admin-dashboard');
+                              Navigator.pushNamedAndRemoveUntil(context, '/admin-dashboard', (route) => false);
                             } else {
-                              Navigator.pushReplacementNamed(context, '/dashboard');
+                              Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false);
                             }
                           } else if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(

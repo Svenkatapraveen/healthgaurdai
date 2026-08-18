@@ -40,7 +40,13 @@ class AnalysisResultsScreen extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: AppColors.getTextPrimary(isDark)),
-          onPressed: () => Navigator.pushReplacementNamed(context, '/dashboard'),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false);
+            }
+          },
         ),
       ),
       body: SingleChildScrollView(
@@ -235,7 +241,7 @@ class AnalysisResultsScreen extends StatelessWidget {
             const SizedBox(height: 12),
 
             TextButton(
-              onPressed: () => Navigator.pushReplacementNamed(context, '/dashboard'),
+              onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false),
               child: Text('Return to Home Dashboard', style: TextStyle(color: AppColors.primaryTeal)),
             ),
             const SizedBox(height: 30),

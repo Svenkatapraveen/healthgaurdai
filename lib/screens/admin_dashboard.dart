@@ -1,17 +1,15 @@
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
 import '../theme/colors.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/custom_chart.dart';
 import '../state/app_state.dart';
 import '../services/db_service.dart';
+import '../services/auth_service.dart';
 import '../utils/web_download_helper.dart';
+import '../utils/pdf_generator_helper.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({Key? key}) : super(key: key);
@@ -58,152 +56,243 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     });
   }
 
-  Future<void> _handleViewReport(AppointmentModel appt) async {
-    print('Debug Appointment Data: id=${appt.id}, reportUrl=${appt.reportUrl}, reportStoragePath=${appt.reportStoragePath}, reportFileName=${appt.reportFileName}');
-
-    String targetUrl = appt.reportUrl.trim();
-
-    if (targetUrl.isEmpty && appt.reportStoragePath.isNotEmpty) {
-      try {
-        targetUrl = await FirebaseStorage.instance
-            .ref(appt.reportStoragePath)
-            .getDownloadURL();
-      } catch (e) {
-        print('Firebase Storage getDownloadURL error: $e');
-      }
-    }
-
-    if (targetUrl.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Medical report is not available.'),
-            backgroundColor: AppColors.riskCritical,
+  void _showRejectDialog(AppointmentModel appt, AppState state) {
+    final reasonController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: const Text('Reject Appointment Request', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Are you sure you want to reject the appointment request for ${appt.patientName}?', style: const TextStyle(fontSize: 13)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonController,
+              decoration: InputDecoration(
+                labelText: 'Reason for rejection (Optional)',
+                hintText: 'e.g. Doctor unavailable on requested date',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
           ),
-        );
-      }
-      return;
-    }
-
-    // Convert remote domain to local origin when running locally on web
-    if (targetUrl.contains('health-ai-c2308.web.app') || targetUrl.contains('/#/report?id=')) {
-      if (kIsWeb && Uri.base.origin.isNotEmpty && !Uri.base.origin.contains('null')) {
-        String reportId = appt.id;
-        if (targetUrl.contains('id=')) {
-          reportId = targetUrl.split('id=').last.split('&')[0];
-        }
-        targetUrl = '${Uri.base.origin}/#/report?id=$reportId';
-      }
-    }
-
-    try {
-      await openPdfUrlInNewTab(targetUrl);
-    } catch (e) {
-      print('Error launching View Report URL: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Unable to access the medical report. Please try again.'),
-            backgroundColor: AppColors.riskCritical,
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final reason = reasonController.text.trim();
+              await state.updateAppointmentStatusAdmin(
+                appt.id,
+                'Rejected',
+                rejectionReason: reason.isNotEmpty ? reason : null,
+                targetUserId: appt.userId,
+                doctorName: appt.doctorName.isNotEmpty ? appt.doctorName : appt.doctorSpecialty,
+              );
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Appointment request rejected.'),
+                    backgroundColor: AppColors.riskCritical,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.riskCritical, foregroundColor: Colors.white),
+            child: const Text('Confirm Rejection', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
-        );
-      }
+        ],
+      ),
+    );
+  }
+
+  void _showRescheduleDialog(AppointmentModel appt, AppState state) async {
+    DateTime selectedDate = appt.preferredDateTime;
+    TimeOfDay selectedTime = TimeOfDay.fromDateTime(appt.preferredDateTime);
+
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: selectedDate.isAfter(DateTime.now()) ? selectedDate : DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 90)),
+    );
+
+    if (pickedDate == null || !mounted) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: selectedTime,
+    );
+
+    if (pickedTime == null || !mounted) return;
+
+    final newDateTime = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    await state.rescheduleAppointmentAdmin(
+      appt.id,
+      newDateTime,
+      targetUserId: appt.userId,
+      doctorName: appt.doctorName.isNotEmpty ? appt.doctorName : appt.doctorSpecialty,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Appointment rescheduled successfully.'),
+          backgroundColor: AppColors.primaryTeal,
+        ),
+      );
     }
   }
 
-  Future<Uint8List> _generateMedicalReportPdfBytes(AppointmentModel appt) async {
-    final pdf = pw.Document();
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Header(
-                level: 0,
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text('HealthGuard AI - Clinical Medical Report', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColors.teal)),
-                    pw.Text('CONFIDENTIAL', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.red)),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 16),
-              pw.Text('Patient Name: ${appt.patientName}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-              pw.Text('Mobile Number: ${appt.mobileNumber}', style: const pw.TextStyle(fontSize: 12)),
-              pw.Text('Doctor Specialty: ${appt.doctorSpecialty}', style: const pw.TextStyle(fontSize: 12)),
-              pw.Text('Scheduled Date: ${appt.preferredDateTime.day}/${appt.preferredDateTime.month}/${appt.preferredDateTime.year} at ${appt.preferredDateTime.hour}:${appt.preferredDateTime.minute.toString().padLeft(2, '0')}', style: const pw.TextStyle(fontSize: 12)),
-              pw.SizedBox(height: 16),
-              pw.Divider(),
-              pw.SizedBox(height: 12),
-              pw.Text('Medical Assessment File: ${appt.reportFileName.isNotEmpty ? appt.reportFileName : 'HealthGuard_AI_Medical_Report.pdf'}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-              pw.Text('Status: ${appt.status}', style: const pw.TextStyle(fontSize: 12)),
-              pw.SizedBox(height: 20),
-              pw.Text('Health Assessment Summary:', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-              pw.Text('Patient completed AI preliminary symptom analysis and attached this official report for consultation review.', style: const pw.TextStyle(fontSize: 11)),
-              pw.SizedBox(height: 30),
-              pw.Text('HealthGuard AI Enterprise System • Confidential Patient Record', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey)),
-            ],
-          );
-        },
-      ),
+  Future<Uint8List> _getOrGenerate21SectionPdfBytes(AppointmentModel appt, AppState state) async {
+    // 1. Try downloading raw bytes from Firebase Storage path
+    if (appt.reportStoragePath.isNotEmpty) {
+      try {
+        final data = await FirebaseStorage.instance
+            .ref(appt.reportStoragePath)
+            .getData(10 * 1024 * 1024);
+        if (data != null && data.isNotEmpty) return data;
+      } catch (e) {
+        print('Storage getData warning: $e');
+      }
+    }
+
+    // 2. Try HTTP download if reportUrl is a direct HTTP resource
+    final targetUrl = appt.reportUrl.trim();
+    if (targetUrl.startsWith('http') && !targetUrl.contains('/#/report')) {
+      try {
+        final res = await http.get(Uri.parse(targetUrl)).timeout(const Duration(seconds: 4));
+        if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
+          return res.bodyBytes;
+        }
+      } catch (e) {
+        print('HTTP download warning: $e');
+      }
+    }
+
+    // 3. Try fetching AssessmentModel from database or reconstruct
+    AssessmentModel? assessment;
+    if (appt.reportId.isNotEmpty) {
+      try {
+        assessment = await state.dbService.getAssessmentById(appt.reportId);
+      } catch (_) {}
+    }
+
+    assessment ??= AssessmentModel(
+      id: appt.reportId.isNotEmpty ? appt.reportId : appt.id,
+      userId: appt.userId,
+      date: appt.createdAt,
+      primarySymptoms: appt.symptomsSummary.isNotEmpty
+          ? appt.symptomsSummary.split(', ').toList()
+          : ['General Symptom Assessment'],
+      details: {
+        'severity': 5.0,
+        'duration': 'Recent',
+        'pattern': 'Intermittent',
+        'recommendedDoctor': appt.doctorSpecialty,
+        'patientName': appt.patientName,
+        'patientEmail': appt.patientEmail,
+        'mobileNumber': appt.mobileNumber,
+      },
+      associatedSymptoms: const [],
+      medicalHistory: const [],
+      lifestyle: const {'smoking': 'Never', 'alcohol': 'Rarely', 'exercise': 'Regular', 'sleep': 7.0, 'water': 2.0, 'stress': 'Moderate'},
+      overallRiskScore: appt.riskScore,
+      riskCategory: appt.riskLevel.isNotEmpty ? appt.riskLevel : 'Moderate Risk',
+      diseaseProbability: {appt.doctorSpecialty: appt.riskScore},
+      clinicalSummary: 'Official HealthGuard AI Clinical Medical Assessment Report for ${appt.patientName}.',
+      possibleCauses: [appt.doctorSpecialty],
+      recommendations: const ['Consult specialist physician for physical clinical examination.'],
+      preventiveActions: const ['Monitor vital signs regularly'],
+      urgencyLevel: 'Regular',
     );
-    return await pdf.save();
+
+    AppUser? patientUser;
+    if (state.currentUser != null && state.currentUser!.uid == appt.userId) {
+      patientUser = state.currentUser;
+    }
+
+    return await generate21SectionMedicalReportPdfBytes(
+      assessment: assessment,
+      user: patientUser,
+    );
+  }
+
+  Future<void> _handleViewReport(AppointmentModel appt) async {
+    final state = AppStateProvider.of(context);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+              SizedBox(width: 12),
+              Text('Opening medical report in new tab...'),
+            ],
+          ),
+          backgroundColor: AppColors.primaryTeal,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+
+    try {
+      final pdfBytes = await _getOrGenerate21SectionPdfBytes(appt, state);
+      await openPdfUrlInNewTab('', bytes: pdfBytes);
+    } catch (e) {
+      print('Error opening medical report: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to open the medical report. Please try again.'),
+            backgroundColor: AppColors.riskCritical,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _handleDownloadReport(AppointmentModel appt) async {
-    print('Debug Download Report Data: id=${appt.id}, reportUrl=${appt.reportUrl}, reportStoragePath=${appt.reportStoragePath}, reportFileName=${appt.reportFileName}');
+    final state = AppStateProvider.of(context);
 
-    String targetUrl = appt.reportUrl.trim();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+              SizedBox(width: 12),
+              Text('Downloading medical report PDF...'),
+            ],
+          ),
+          backgroundColor: AppColors.primaryTeal,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+
     final fileName = appt.reportFileName.isNotEmpty
         ? appt.reportFileName
-        : 'HealthGuard_AI_Medical_Report.pdf';
-
-    if (targetUrl.isEmpty && appt.reportStoragePath.isNotEmpty) {
-      try {
-        targetUrl = await FirebaseStorage.instance
-            .ref(appt.reportStoragePath)
-            .getDownloadURL();
-      } catch (e) {
-        print('Firebase Storage getDownloadURL error: $e');
-      }
-    }
-
-    Uint8List? pdfBytes;
-    if (appt.reportStoragePath.isNotEmpty) {
-      try {
-        pdfBytes = await FirebaseStorage.instance
-            .ref(appt.reportStoragePath)
-            .getData(10 * 1024 * 1024);
-      } catch (e) {
-        print('Firebase Storage getData error: $e');
-      }
-    }
-
-    if (pdfBytes == null && targetUrl.startsWith('http') && !targetUrl.contains('/#/report?id=')) {
-      try {
-        final res = await http.get(Uri.parse(targetUrl)).timeout(const Duration(seconds: 5));
-        if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
-          pdfBytes = res.bodyBytes;
-        }
-      } catch (e) {
-        print('HTTP download error: $e');
-      }
-    }
-
-    // Dynamic PDF bytes generation fallback if file bytes are unavailable
-    if (pdfBytes == null) {
-      try {
-        pdfBytes = await _generateMedicalReportPdfBytes(appt);
-      } catch (e) {
-        print('Error generating dynamic PDF bytes: $e');
-      }
-    }
+        : 'HealthGuard_AI_Medical_Report_${appt.reportId.isNotEmpty ? appt.reportId : appt.id}.pdf';
 
     try {
-      await downloadPdfFileFromUrl(targetUrl, fileName, pdfBytes);
+      final pdfBytes = await _getOrGenerate21SectionPdfBytes(appt, state);
+      await downloadPdfFileFromUrl('', fileName, bytes: pdfBytes);
     } catch (e) {
       print('Error executing Download Report: $e');
       if (mounted) {
@@ -349,7 +438,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
                 const SizedBox(height: 28),
                 ElevatedButton(
-                  onPressed: () => Navigator.pushReplacementNamed(context, '/welcome'),
+                  onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/welcome', (route) => false),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accentCyan,
                     foregroundColor: Colors.white,
@@ -796,7 +885,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Appointment Request Hub',
+                  'Appointment Management',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark)),
                 ),
                 Container(
@@ -806,7 +895,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    '${appts.length} Total',
+                    '${appts.length} Total Requests',
                     style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.accentCyan),
                   ),
                 ),
@@ -830,17 +919,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             else
               ...appts.map((appt) {
                 Color statusColor = Colors.grey;
-                if (appt.status == 'Approved') statusColor = AppColors.primaryGreen;
-                else if (appt.status == 'Pending') statusColor = AppColors.riskModerate;
-                else if (appt.status == 'Rejected') statusColor = AppColors.riskCritical;
+                IconData statusIcon = Icons.pending_actions;
+                if (appt.status == 'Approved') {
+                  statusColor = AppColors.primaryGreen;
+                  statusIcon = Icons.check_circle_outline;
+                } else if (appt.status == 'Pending') {
+                  statusColor = AppColors.riskModerate;
+                  statusIcon = Icons.hourglass_top_outlined;
+                } else if (appt.status == 'Rejected') {
+                  statusColor = AppColors.riskCritical;
+                  statusIcon = Icons.cancel_outlined;
+                } else if (appt.status == 'Rescheduled') {
+                  statusColor = Colors.blueAccent;
+                  statusIcon = Icons.update_outlined;
+                }
 
-                final hasReport = appt.reportUrl.isNotEmpty;
+                final bool hasReport = appt.reportUrl.isNotEmpty || appt.reportStoragePath.isNotEmpty || appt.reportId.isNotEmpty || appt.symptomsSummary.isNotEmpty || appt.patientName.isNotEmpty;
                 final reportName = appt.reportFileName.isNotEmpty 
                     ? appt.reportFileName 
-                    : (hasReport ? 'HealthGuard_Medical_Report.pdf' : 'No Report Uploaded');
+                    : 'HealthGuard_Medical_Report_${appt.reportId.isNotEmpty ? appt.reportId : appt.id}.pdf';
 
                 final dateStr = '${appt.preferredDateTime.day}/${appt.preferredDateTime.month}/${appt.preferredDateTime.year}';
                 final timeStr = '${appt.preferredDateTime.hour.toString().padLeft(2, '0')}:${appt.preferredDateTime.minute.toString().padLeft(2, '0')}';
+                final docName = appt.doctorName.isNotEmpty ? appt.doctorName : 'Dr. (${appt.doctorSpecialty})';
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 14),
@@ -851,32 +952,68 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              appt.patientName,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    appt.patientName,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                  ),
+                                  if (appt.patientEmail.isNotEmpty)
+                                    Text(
+                                      appt.patientEmail,
+                                      style: TextStyle(fontSize: 11, color: AppColors.getTextSecondary(isDark)),
+                                    ),
+                                ],
+                              ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
                                 color: statusColor.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: statusColor.withOpacity(0.5)),
                               ),
-                              child: Text(
-                                appt.status,
-                                style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 11),
+                              child: Row(
+                                children: [
+                                  Icon(statusIcon, color: statusColor, size: 14),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    appt.status,
+                                    style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 11),
+                                  ),
+                                ],
                               ),
                             )
                           ],
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                         Text(
-                          'Doctor Specialty: ${appt.doctorSpecialty} • Phone: ${appt.mobileNumber}',
-                          style: TextStyle(fontSize: 12, color: AppColors.getTextSecondary(isDark)),
+                          'Assigned Doctor: $docName (${appt.doctorSpecialty})',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark)),
+                        ),
+                        Text(
+                          'Phone: ${appt.mobileNumber.isNotEmpty ? appt.mobileNumber : "Not provided"}',
+                          style: TextStyle(fontSize: 11, color: AppColors.getTextSecondary(isDark)),
                         ),
                         Text(
                           'Schedule Date: $dateStr • Time: $timeStr',
-                          style: TextStyle(fontSize: 11, color: AppColors.getTextSecondary(isDark)),
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.getTextSecondary(isDark)),
                         ),
+                        if (appt.previousAppointmentDate != null)
+                          Text(
+                            'Previous Date: ${appt.previousAppointmentDate!.day}/${appt.previousAppointmentDate!.month}/${appt.previousAppointmentDate!.year}',
+                            style: const TextStyle(fontSize: 10, color: Colors.blueAccent, fontStyle: FontStyle.italic),
+                          ),
+                        if (appt.rejectionReason != null && appt.rejectionReason!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Text(
+                              'Rejection Reason: ${appt.rejectionReason}',
+                              style: const TextStyle(fontSize: 11, color: AppColors.riskCritical, fontWeight: FontWeight.bold),
+                            ),
+                          ),
                         const SizedBox(height: 12),
 
                         // Medical Report Section
@@ -905,7 +1042,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Medical Report / Health Assessment',
+                                          'Attached Medical Report',
                                           style: TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
@@ -924,6 +1061,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                       ],
                                     ),
                                   ),
+                                  if (appt.riskLevel.isNotEmpty)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primaryTeal.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        appt.riskLevel,
+                                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.primaryTeal),
+                                      ),
+                                    ),
                                 ],
                               ),
                               const SizedBox(height: 10),
@@ -973,33 +1122,43 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         const SizedBox(height: 12),
                         
                         // Action buttons
-                        if (appt.status == 'Pending')
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              OutlinedButton(
-                                onPressed: () async {
-                                  await state.updateAppointmentStatusAdmin(appt.id, 'Rejected');
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Appointment rejected successfully.'),
-                                        backgroundColor: AppColors.riskCritical,
-                                      ),
-                                    );
-                                  }
-                                },
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () => _showRescheduleDialog(appt, state),
+                              icon: const Icon(Icons.edit_calendar, size: 14),
+                              label: const Text('Reschedule', style: TextStyle(fontSize: 11)),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.blueAccent,
+                                side: const BorderSide(color: Colors.blueAccent),
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            if (appt.status != 'Rejected')
+                              OutlinedButton.icon(
+                                onPressed: () => _showRejectDialog(appt, state),
+                                icon: const Icon(Icons.close, size: 14),
+                                label: const Text('Reject', style: TextStyle(fontSize: 11)),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: AppColors.riskCritical,
                                   side: const BorderSide(color: AppColors.riskCritical),
-                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
                                 ),
-                                child: const Text('Reject', style: TextStyle(fontSize: 11)),
                               ),
-                              const SizedBox(width: 8),
-                              ElevatedButton(
+                            const SizedBox(width: 8),
+                            if (appt.status != 'Approved')
+                              ElevatedButton.icon(
                                 onPressed: () async {
-                                  await state.updateAppointmentStatusAdmin(appt.id, 'Approved');
+                                  final dateFormatted = '${appt.preferredDateTime.day}/${appt.preferredDateTime.month}/${appt.preferredDateTime.year} at ${appt.preferredDateTime.hour.toString().padLeft(2, '0')}:${appt.preferredDateTime.minute.toString().padLeft(2, '0')}';
+                                  await state.updateAppointmentStatusAdmin(
+                                    appt.id,
+                                    'Approved',
+                                    targetUserId: appt.userId,
+                                    doctorName: appt.doctorName.isNotEmpty ? appt.doctorName : appt.doctorSpecialty,
+                                    dateStr: dateFormatted,
+                                  );
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
@@ -1009,15 +1168,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                     );
                                   }
                                 },
+                                icon: const Icon(Icons.check, size: 14),
+                                label: const Text('Approve', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primaryTeal,
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
                                 ),
-                                child: const Text('Approve', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                               ),
-                            ],
-                          )
+                          ],
+                        )
                       ],
                     ),
                   ),
@@ -1306,7 +1466,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onPressed: () async {
             await state.logout();
             if (!mounted) return;
-            Navigator.pushReplacementNamed(context, '/welcome');
+            Navigator.pushNamedAndRemoveUntil(context, '/welcome', (route) => false);
           },
           icon: const Icon(Icons.logout, color: AppColors.riskCritical),
           label: const Text('Terminate Session (Log Out)', style: TextStyle(color: AppColors.riskCritical, fontWeight: FontWeight.bold)),

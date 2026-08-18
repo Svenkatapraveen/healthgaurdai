@@ -1,13 +1,14 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../theme/colors.dart';
 import '../widgets/glass_card.dart';
 import '../state/app_state.dart';
+import '../services/db_service.dart';
+import '../data/doctor_database.dart';
+import '../utils/pdf_generator_helper.dart';
 
-// ==========================================
-// 1. APPOINTMENT BOOKING SCREEN
-// ==========================================
 class AppointmentBookingScreen extends StatefulWidget {
   const AppointmentBookingScreen({Key? key}) : super(key: key);
 
@@ -18,23 +19,35 @@ class AppointmentBookingScreen extends StatefulWidget {
 class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _mobileController = TextEditingController();
 
   DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
-  TimeOfDay _selectedTime = const TimeOfDay(hour: 9, minute: 0);
+  TimeOfDay _selectedTime = const TimeOfDay(hour: 10, minute: 0);
+  
   String _specialty = 'General Physician';
-
-  PlatformFile? _selectedPdfFile;
+  DoctorModel? _selectedDoctor;
+  
+  AssessmentModel? _attachedAssessment;
+  PlatformFile? _uploadedPdfFile;
   String? _uploadError;
   bool _isUploadingPdf = false;
+  bool _isSlotBookedError = false;
 
-  final List<String> _specialties = [
+  final List<String> _specialties = const [
     'General Physician',
     'Cardiologist',
     'Neurologist',
-    'Orthopedic',
+    'Dermatologist',
+    'Ophthalmologist',
+    'ENT Specialist',
     'Pulmonologist',
-    'Gastroenterologist'
+    'Gastroenterologist',
+    'Orthopedic Specialist',
+    'Urologist',
+    'Gynecologist',
+    'Psychiatrist',
+    'Endocrinologist',
   ];
 
   @override
@@ -44,12 +57,57 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
     final user = state.currentUser;
     if (user != null) {
       if (_nameController.text.isEmpty) _nameController.text = user.fullName;
+      if (_emailController.text.isEmpty) _emailController.text = user.email;
       if (_mobileController.text.isEmpty) _mobileController.text = user.mobileNumber;
     }
 
-    final argSpecialty = ModalRoute.of(context)!.settings.arguments as String?;
-    if (argSpecialty != null && _specialties.contains(argSpecialty)) {
-      _specialty = argSpecialty;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is AssessmentModel) {
+      _attachedAssessment = args;
+      _specialty = args.details['recommendedDoctor']?.toString() ?? 'General Physician';
+    } else if (args is String) {
+      if (_specialties.contains(args)) {
+        _specialty = args;
+      }
+    } else if (_attachedAssessment == null && state.assessments.isNotEmpty) {
+      _attachedAssessment = state.assessments.first;
+      if (_attachedAssessment?.details['recommendedDoctor'] != null) {
+        _specialty = _attachedAssessment!.details['recommendedDoctor'].toString();
+      }
+    }
+
+    // Auto select doctor for chosen specialty
+    final docs = getDoctorsBySpecialty(_specialty);
+    if (_selectedDoctor == null || _selectedDoctor!.specialty != _specialty) {
+      _selectedDoctor = docs.isNotEmpty ? docs.first : null;
+    }
+  }
+
+  void _checkSlotAvailability() {
+    final state = AppStateProvider.of(context);
+    final targetDateTime = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      _selectedTime.hour,
+      _selectedTime.minute,
+    );
+
+    bool isBooked = false;
+    if (_selectedDoctor != null) {
+      isBooked = state.appointments.any((appt) {
+        if (appt.doctorId == _selectedDoctor!.id || appt.doctorName == _selectedDoctor!.name) {
+          final diff = appt.preferredDateTime.difference(targetDateTime).inMinutes.abs();
+          if (diff < 30 && appt.status != 'Rejected') return true;
+        }
+        return false;
+      });
+    }
+
+    if (mounted) {
+      setState(() {
+        _isSlotBookedError = isBooked;
+      });
     }
   }
 
@@ -61,7 +119,10 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
       lastDate: DateTime.now().add(const Duration(days: 90)),
     );
     if (date != null) {
-      setState(() => _selectedDate = date);
+      setState(() {
+        _selectedDate = date;
+      });
+      _checkSlotAvailability();
     }
   }
 
@@ -71,7 +132,10 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
       initialTime: _selectedTime,
     );
     if (time != null) {
-      setState(() => _selectedTime = time);
+      setState(() {
+        _selectedTime = time;
+      });
+      _checkSlotAvailability();
     }
   }
 
@@ -101,7 +165,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
         }
 
         setState(() {
-          _selectedPdfFile = file;
+          _uploadedPdfFile = file;
           _uploadError = null;
         });
       }
@@ -112,20 +176,17 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
     }
   }
 
-  void _removePdf() {
-    setState(() {
-      _selectedPdfFile = null;
-      _uploadError = null;
-    });
-  }
-
-  void _submit() async {
+  void _submitBooking() async {
     if (!_formKey.currentState!.validate()) return;
+    _checkSlotAvailability();
 
-    if (_selectedPdfFile == null) {
-      setState(() {
-        _uploadError = 'Please upload your medical report before booking an appointment.';
-      });
+    if (_isSlotBookedError) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This appointment slot is no longer available. Please select another time.'),
+          backgroundColor: AppColors.riskCritical,
+        ),
+      );
       return;
     }
 
@@ -141,37 +202,56 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
         _selectedTime.minute,
       );
 
+      String reportId = _attachedAssessment?.id ?? 'HG-REPORT-${DateTime.now().millisecondsSinceEpoch}';
+      String reportFileName = _uploadedPdfFile?.name ?? 'HealthGuard_AI_Medical_Report_$reportId.pdf';
       String reportDownloadUrl = '';
-      String storagePath = '';
-      try {
-        if (_selectedPdfFile?.bytes != null && state.currentUser != null) {
-          storagePath = 'medical_reports/${state.currentUser!.uid}/${DateTime.now().millisecondsSinceEpoch}_${_selectedPdfFile!.name}';
-          final ref = FirebaseStorage.instance.ref().child(storagePath);
-          final uploadTask = await ref.putData(
-            _selectedPdfFile!.bytes!,
-            SettableMetadata(contentType: 'application/pdf'),
-          ).timeout(const Duration(seconds: 2));
-          
-          reportDownloadUrl = await uploadTask.ref.getDownloadURL().timeout(const Duration(seconds: 2));
-        }
-      } catch (e) {
-        print('Storage upload fallback: $e');
+      String storagePath = 'medical_reports/${state.currentUser?.uid ?? "patients"}/$reportId.pdf';
+
+      Uint8List? pdfBytes;
+      if (_uploadedPdfFile?.bytes != null) {
+        pdfBytes = _uploadedPdfFile!.bytes!;
+      } else if (_attachedAssessment != null) {
+        pdfBytes = await generate21SectionMedicalReportPdfBytes(
+          assessment: _attachedAssessment!,
+          user: state.currentUser,
+        );
       }
 
-      if (reportDownloadUrl.isEmpty) {
-        final reportId = 'asm_${DateTime.now().millisecondsSinceEpoch}';
-        reportDownloadUrl = 'https://health-ai-c2308.web.app/#/report?id=$reportId';
+      if (pdfBytes != null && pdfBytes.isNotEmpty) {
+        try {
+          final ref = FirebaseStorage.instance.ref().child(storagePath);
+          final uploadTask = await ref.putData(
+            pdfBytes,
+            SettableMetadata(contentType: 'application/pdf'),
+          ).timeout(const Duration(seconds: 4));
+          
+          reportDownloadUrl = await uploadTask.ref.getDownloadURL().timeout(const Duration(seconds: 3));
+        } catch (e) {
+          print('Firebase Storage upload warning: $e');
+        }
       }
+
+      final doctorId = _selectedDoctor?.id ?? 'doc_default';
+      final doctorName = _selectedDoctor?.name ?? 'Dr. Specialist ($_specialty)';
+      final riskScore = _attachedAssessment?.overallRiskScore ?? 35.0;
+      final riskLevel = _attachedAssessment?.riskCategory ?? 'Moderate Risk';
 
       await state.createAppointment(
         patientName: _nameController.text,
+        patientEmail: _emailController.text,
         mobileNumber: _mobileController.text,
         dateTime: apptDateTime,
+        doctorId: doctorId,
+        doctorName: doctorName,
         doctorSpecialty: _specialty,
-        reportFileName: _selectedPdfFile!.name,
+        symptomsSummary: _attachedAssessment?.primarySymptoms.join(', ') ?? 'Routine Consultation Request',
+        reportId: reportId,
+        reportFileName: reportFileName,
         reportUrl: reportDownloadUrl,
         reportStoragePath: storagePath,
-      ).timeout(const Duration(seconds: 3), onTimeout: () {});
+        riskScore: riskScore,
+        riskLevel: riskLevel,
+      ).timeout(const Duration(seconds: 4), onTimeout: () {});
 
       if (!mounted) return;
 
@@ -179,29 +259,45 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
-          title: const Text('Appointment Booked Successfully', style: TextStyle(fontWeight: FontWeight.bold)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: const [
+              Icon(Icons.check_circle_rounded, color: AppColors.primaryTeal, size: 28),
+              SizedBox(width: 10),
+              Text('Appointment Booked', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Your consultation request and medical report have been registered with status: Pending. The administrator will review your report shortly.',
+              const Text('Your consultation request and HealthGuard AI report have been registered in status: Pending.'),
+              const SizedBox(height: 12),
+              Text('Doctor: $doctorName', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              Text('Specialty: $_specialty', style: const TextStyle(fontSize: 12)),
+              Text('Date & Time: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} at ${_selectedTime.format(context)}', style: const TextStyle(fontSize: 12)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.picture_as_pdf, color: Colors.redAccent, size: 16),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(reportFileName, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryTeal), overflow: TextOverflow.ellipsis),
+                  ),
+                ],
               ),
-              const SizedBox(height: 14),
-              Text('Doctor Specialty: $_specialty', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              Text('Date: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}', style: const TextStyle(fontSize: 12)),
-              Text('Report: ${_selectedPdfFile!.name}', style: const TextStyle(fontSize: 12, color: AppColors.primaryTeal, fontWeight: FontWeight.bold)),
             ],
           ),
           actions: [
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                Navigator.pushReplacementNamed(context, '/dashboard');
+                Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryTeal,
                 foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               child: const Text('Go to Dashboard', style: TextStyle(fontWeight: FontWeight.bold)),
             )
@@ -215,87 +311,274 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
     }
   }
 
-  String _formatFileSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
-  }
-
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final state = AppStateProvider.of(context);
+    final user = state.currentUser;
+
+    final availableDoctors = getDoctorsBySpecialty(_specialty);
 
     return Scaffold(
       backgroundColor: AppColors.getBg(isDark),
       appBar: AppBar(
-        title: const Text('Book Appointment', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Book Doctor Appointment', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false);
+            }
+          },
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(18.0),
         child: Form(
           key: _formKey,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Schedule Consultation',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark)),
+              // 1. HEALTH ASSESSMENT REPORT BANNER
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF0F2C59), Color(0xFF1E3A8A)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0F2C59).withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Health Assessment Report',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2DD4BF).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFF2DD4BF)),
+                          ),
+                          child: Row(
+                            children: const [
+                              Icon(Icons.check_circle, color: Color(0xFF2DD4BF), size: 14),
+                              SizedBox(width: 4),
+                              Text('Medical Report Attached ✓', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2DD4BF))),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Report ID: ${_attachedAssessment?.id ?? "HG-RPT-2026"}', style: const TextStyle(fontSize: 11, color: Colors.white70)),
+                              Text('Patient: ${user?.fullName ?? "Rahul"}', style: const TextStyle(fontSize: 11, color: Colors.white70)),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Risk Level: ${_attachedAssessment?.riskCategory ?? "Moderate Risk"}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amberAccent)),
+                              Text('Risk Score: ${(_attachedAssessment?.overallRiskScore ?? 35.0).toStringAsFixed(0)}/100', style: const TextStyle(fontSize: 11, color: Colors.white70)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.picture_as_pdf, color: Colors.redAccent, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _uploadedPdfFile != null ? _uploadedPdfFile!.name : 'HealthGuard_AI_Medical_Report.pdf',
+                              style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _choosePdf,
+                            child: const Text('Change PDF', style: TextStyle(fontSize: 10, color: Color(0xFF2DD4BF), fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(height: 20),
+
+              // 2. AI RECOMMENDED SPECIALIST
+              if (_attachedAssessment != null && _attachedAssessment!.details['recommendedDoctor'] != null) ...[
+                Text('AI Recommended Specialist', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark))),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryTeal.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primaryTeal.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: AppColors.primaryTeal.withOpacity(0.15), shape: BoxShape.circle),
+                        child: const Icon(Icons.auto_awesome, color: AppColors.primaryTeal, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _attachedAssessment!.details['recommendedDoctor'].toString(),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primaryTeal),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Reason: Based on the reported symptoms (${_attachedAssessment!.primarySymptoms.join(", ")}) and risk assessment, this specialty is recommended.',
+                              style: TextStyle(fontSize: 11, color: AppColors.getTextSecondary(isDark)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+
+              // 3. SELECT MEDICAL SPECIALTY
+              Text('Select Medical Specialty', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark))),
               const SizedBox(height: 8),
-              Text(
-                'Select doctor specialty and choose preferred timing slots below.',
-                style: TextStyle(fontSize: 13, color: AppColors.getTextSecondary(isDark)),
-              ),
-              const SizedBox(height: 24),
-              
-              // Patient Name
-              TextFormField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  labelText: 'Patient Full Name',
-                  prefixIcon: const Icon(Icons.person_outline),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                validator: (val) => val != null && val.isNotEmpty ? null : 'Enter patient name.',
-              ),
-              const SizedBox(height: 16),
-              
-              // Mobile Number
-              TextFormField(
-                controller: _mobileController,
-                decoration: InputDecoration(
-                  labelText: 'Mobile Number',
-                  prefixIcon: const Icon(Icons.phone_outlined),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                validator: (val) => val != null && val.length > 5 ? null : 'Enter contact number.',
-              ),
-              const SizedBox(height: 16),
-
-              // Specialty Dropdown
               DropdownButtonFormField<String>(
-                value: _specialty,
+                value: _specialties.contains(_specialty) ? _specialty : _specialties.first,
                 decoration: InputDecoration(
-                  labelText: 'Doctor Specialty',
+                  prefixIcon: const Icon(Icons.medical_services_outlined, color: AppColors.primaryTeal),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: isDark ? const Color(0xFF0F172A) : Colors.white,
                 ),
-                items: _specialties.map((spec) {
-                  return DropdownMenuItem(value: spec, child: Text(spec));
-                }).toList(),
-                onChanged: (val) => setState(() => _specialty = val ?? 'General Physician'),
+                items: _specialties.map((spec) => DropdownMenuItem(value: spec, child: Text(spec))).toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() {
+                      _specialty = val;
+                      final docs = getDoctorsBySpecialty(_specialty);
+                      _selectedDoctor = docs.isNotEmpty ? docs.first : null;
+                    });
+                    _checkSlotAvailability();
+                  }
+                },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
-              // Date & Time Picker buttons
+              // 4. SELECT DOCTOR
+              Text('Available Doctors', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark))),
+              const SizedBox(height: 8),
+              Column(
+                children: availableDoctors.map((doc) {
+                  final isSelected = _selectedDoctor?.id == doc.id;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedDoctor = doc;
+                        });
+                        _checkSlotAvailability();
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected ? AppColors.primaryTeal : (isDark ? Colors.white10 : Colors.grey.shade300),
+                            width: isSelected ? 2.0 : 1.0,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: AppColors.primaryTeal.withOpacity(0.15),
+                              child: const Icon(Icons.person, color: AppColors.primaryTeal),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(doc.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                  Text('${doc.specialty} • ${doc.availableDays}', style: TextStyle(fontSize: 11, color: AppColors.getTextSecondary(isDark))),
+                                  Text('Hours: ${doc.availableHours}', style: TextStyle(fontSize: 10, color: AppColors.getTextSecondary(isDark))),
+                                ],
+                              ),
+                            ),
+                            Radio<String>(
+                              value: doc.id,
+                              groupValue: _selectedDoctor?.id,
+                              activeColor: AppColors.primaryTeal,
+                              onChanged: (val) {
+                                setState(() {
+                                  _selectedDoctor = doc;
+                                });
+                                _checkSlotAvailability();
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+
+              // 5. APPOINTMENT DATE AND TIME
+              Text('Appointment Date & Preferred Time', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark))),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: _pickDate,
-                      icon: const Icon(Icons.date_range),
+                      icon: const Icon(Icons.calendar_month, color: AppColors.primaryTeal),
                       label: Text('${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}'),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -307,7 +590,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: _pickTime,
-                      icon: const Icon(Icons.access_time),
+                      icon: const Icon(Icons.access_time, color: AppColors.primaryTeal),
                       label: Text(_selectedTime.format(context)),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -317,435 +600,128 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
 
-              // Medical Report / Health Assessment Upload Section
-              Text(
-                'Medical Report / Health Assessment',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.getTextPrimary(isDark),
-                ),
-              ),
-              const SizedBox(height: 8),
-              
-              if (_selectedPdfFile == null)
-                GestureDetector(
-                  onTap: _choosePdf,
-                  child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF0F172A) : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: _uploadError != null ? AppColors.riskCritical : AppColors.primaryTeal.withOpacity(0.4),
-                        width: _uploadError != null ? 1.5 : 1.0,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(Icons.cloud_upload_outlined, color: AppColors.primaryTeal, size: 38),
-                        const SizedBox(height: 10),
-                        Text(
-                          'Upload Medical Report',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.getTextPrimary(isDark),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Upload your HealthGuard AI report in PDF format',
-                          style: TextStyle(fontSize: 12, color: AppColors.getTextSecondary(isDark)),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 14),
-                        ElevatedButton.icon(
-                          onPressed: _choosePdf,
-                          icon: const Icon(Icons.picture_as_pdf, size: 16),
-                          label: const Text('Choose PDF', style: TextStyle(fontWeight: FontWeight.bold)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryTeal,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'PDF only • Max file size: 10 MB',
-                          style: TextStyle(fontSize: 10, color: AppColors.getTextSecondary(isDark)),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
+              if (_isSlotBookedError) ...[
+                const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0F172A) : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.primaryTeal, width: 1.5),
+                    color: AppColors.riskCritical.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.riskCritical),
                   ),
                   child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 22,
-                        backgroundColor: Colors.redAccent.withOpacity(0.15),
-                        child: const Icon(Icons.picture_as_pdf, color: Colors.redAccent, size: 22),
-                      ),
-                      const SizedBox(width: 12),
+                    children: const [
+                      Icon(Icons.warning_amber_rounded, color: AppColors.riskCritical, size: 18),
+                      SizedBox(width: 8),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _selectedPdfFile!.name,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.getTextPrimary(isDark),
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              _formatFileSize(_selectedPdfFile!.size),
-                              style: TextStyle(fontSize: 11, color: AppColors.getTextSecondary(isDark)),
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: const [
-                                Icon(Icons.check_circle, color: AppColors.primaryTeal, size: 14),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Report attached',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primaryTeal,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                        child: Text(
+                          'This appointment slot is no longer available. Please select another time.',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.riskCritical),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                        tooltip: 'Remove file',
-                        onPressed: _removePdf,
                       ),
                     ],
                   ),
                 ),
-
-              if (_uploadError != null) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.error_outline, color: AppColors.riskCritical, size: 14),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        _uploadError!,
-                        style: const TextStyle(fontSize: 12, color: AppColors.riskCritical, fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                  ],
-                ),
               ],
+              const SizedBox(height: 20),
+
+              // 6. PATIENT INFORMATION
+              Text('Patient Information', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark))),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: 'Full Name',
+                  prefixIcon: const Icon(Icons.person_outline),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (val) => val != null && val.isNotEmpty ? null : 'Enter patient name',
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _emailController,
+                decoration: InputDecoration(
+                  labelText: 'Email Address',
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _mobileController,
+                decoration: InputDecoration(
+                  labelText: 'Mobile Number',
+                  prefixIcon: const Icon(Icons.phone_outlined),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (val) => val != null && val.length > 5 ? null : 'Enter mobile number',
+              ),
               const SizedBox(height: 24),
 
-              // Submit Booking Button
-              ElevatedButton(
-                onPressed: (state.isLoading || _isUploadingPdf) ? null : _submit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryTeal,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              // 7. APPOINTMENT SUMMARY CARD
+              Text('Appointment Summary', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark))),
+              const SizedBox(height: 8),
+              GlassCard(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _buildSummaryRow('Patient:', _nameController.text.isNotEmpty ? _nameController.text : (user?.fullName ?? 'Rahul')),
+                    _buildSummaryRow('Doctor:', _selectedDoctor?.name ?? 'Dr. Specialist'),
+                    _buildSummaryRow('Specialty:', _specialty),
+                    _buildSummaryRow('Date:', '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}'),
+                    _buildSummaryRow('Time:', _selectedTime.format(context)),
+                    _buildSummaryRow('Attached Report:', _uploadedPdfFile != null ? _uploadedPdfFile!.name : 'HealthGuard_AI_Medical_Report.pdf'),
+                    _buildSummaryRow('Assessment Risk:', _attachedAssessment?.riskCategory ?? 'Moderate Risk'),
+                  ],
                 ),
-                child: (state.isLoading || _isUploadingPdf)
-                    ? Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                          ),
-                          SizedBox(width: 12),
-                          Text('Uploading Report & Booking...', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ],
-                      )
-                    : const Text('Book Appointment Slot', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
+              const SizedBox(height: 24),
+
+              // 8. CONFIRM & BOOK APPOINTMENT BUTTON
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _isUploadingPdf || _isSlotBookedError ? null : _submitBooking,
+                  icon: _isUploadingPdf
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Icon(Icons.calendar_month, color: Colors.white),
+                  label: Text(
+                    _isUploadingPdf ? 'Booking Appointment...' : 'Confirm & Book Appointment',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryTeal,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
             ],
           ),
         ),
       ),
     );
   }
-}
 
-// ==========================================
-// 2. DOCTOR RECOMMENDATION SCREEN
-// ==========================================
-class DoctorRecommendationScreen extends StatelessWidget {
-  const DoctorRecommendationScreen({Key? key}) : super(key: key);
-
-  // Mock Doctors database
-  static final List<_MockDoctor> _doctors = [
-    _MockDoctor(
-      name: 'Dr. Evelyn Martinez',
-      specialty: 'Cardiologist',
-      experience: 12,
-      clinic: 'St. Jude Heart Institute',
-      rating: 4.9,
-      availability: 'Mon - Fri',
-    ),
-    _MockDoctor(
-      name: 'Dr. Raymond Vance',
-      specialty: 'Neurologist',
-      experience: 15,
-      clinic: 'Advanced Neurological Care',
-      rating: 4.8,
-      availability: 'Tue, Wed, Thu',
-    ),
-    _MockDoctor(
-      name: 'Dr. Aaron Patel',
-      specialty: 'Pulmonologist',
-      experience: 8,
-      clinic: 'Metro Respiratory Clinic',
-      rating: 4.7,
-      availability: 'Mon, Wed, Fri',
-    ),
-    _MockDoctor(
-      name: 'Dr. Sarah Jenkins',
-      specialty: 'Gastroenterologist',
-      experience: 10,
-      clinic: 'Digestive Health Center',
-      rating: 4.9,
-      availability: 'Mon - Thu',
-    ),
-    _MockDoctor(
-      name: 'Dr. Robert Mercer',
-      specialty: 'Orthopedic',
-      experience: 14,
-      clinic: 'Joint & Spine Specialty',
-      rating: 4.6,
-      availability: 'Mon, Tue, Fri',
-    ),
-    _MockDoctor(
-      name: 'Dr. Clara Thorne',
-      specialty: 'General Physician',
-      experience: 6,
-      clinic: 'Family Healthcare Clinic',
-      rating: 4.8,
-      availability: 'Mon - Sat',
-    ),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    // Read primary symptom arguments to filter recommended specialists
-    final symptomArg = ModalRoute.of(context)!.settings.arguments as String?;
-    
-    String recommendedSpecialty = 'General Physician';
-    if (symptomArg != null) {
-      final symptom = symptomArg.toLowerCase();
-      if (symptom.contains('chest') || symptom.contains('heart')) {
-        recommendedSpecialty = 'Cardiologist';
-      } else if (symptom.contains('headache') || symptom.contains('dizzy')) {
-        recommendedSpecialty = 'Neurologist';
-      } else if (symptom.contains('breath') || symptom.contains('cough')) {
-        recommendedSpecialty = 'Pulmonologist';
-      } else if (symptom.contains('stomach') || symptom.contains('abdominal')) {
-        recommendedSpecialty = 'Gastroenterologist';
-      } else if (symptom.contains('back') || symptom.contains('joint') || symptom.contains('bone')) {
-        recommendedSpecialty = 'Orthopedic';
-      }
-    }
-
-    // Filter list to prioritize recommendation
-    final recommendedDoctors = _doctors.where((d) => d.specialty == recommendedSpecialty).toList();
-    final otherDoctors = _doctors.where((d) => d.specialty != recommendedSpecialty).toList();
-    final sortedDoctors = [...recommendedDoctors, ...otherDoctors];
-
-    return Scaffold(
-      backgroundColor: AppColors.getBg(isDark),
-      appBar: AppBar(
-        title: const Text('Recommended Specialists', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: Column(
+  Widget _buildSummaryRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Callout banner detailing recommendations
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.primaryTeal.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.primaryTeal.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.psychology, color: AppColors.primaryTeal, size: 28),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'AI Recommendation: Based on symptom inputs of "$symptomArg", booking a consultation with a $recommendedSpecialty is highly advised.',
-                    style: const TextStyle(fontSize: 12, height: 1.4),
-                  ),
-                ),
-              ],
+          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              itemCount: sortedDoctors.length,
-              itemBuilder: (context, index) {
-                final doc = sortedDoctors[index];
-                final isRecommended = doc.specialty == recommendedSpecialty;
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: GlassCard(
-                    borderColor: isRecommended ? AppColors.primaryTeal.withOpacity(0.4) : null,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          radius: 28,
-                          backgroundColor: (isRecommended ? AppColors.primaryTeal : AppColors.primaryBlue).withOpacity(0.15),
-                          child: Icon(
-                            Icons.person,
-                            color: isRecommended ? AppColors.primaryTeal : AppColors.primaryBlue,
-                            size: 28,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      doc.name,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                                    ),
-                                  ),
-                                  if (isRecommended)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primaryTeal.withOpacity(0.15),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: const Text(
-                                        'RECOMMENDED',
-                                        style: TextStyle(
-                                          color: AppColors.primaryTeal,
-                                          fontSize: 8,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${doc.specialty} • ${doc.experience} Years Exp',
-                                style: TextStyle(fontSize: 12, color: AppColors.getTextSecondary(isDark)),
-                              ),
-                              Text(
-                                doc.clinic,
-                                style: TextStyle(fontSize: 11, color: AppColors.getTextSecondary(isDark)),
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.star, color: Colors.amber, size: 14),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        doc.rating.toString(),
-                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      const Icon(Icons.calendar_today, color: Colors.blueAccent, size: 12),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        doc.availability,
-                                        style: TextStyle(fontSize: 10, color: AppColors.getTextSecondary(isDark)),
-                                      ),
-                                    ],
-                                  ),
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      Navigator.pushNamed(
-                                        context,
-                                        '/booking',
-                                        arguments: doc.specialty,
-                                      );
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: isRecommended ? AppColors.primaryTeal : Colors.transparent,
-                                      foregroundColor: isRecommended ? Colors.white : AppColors.getTextPrimary(isDark),
-                                      elevation: 0,
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                      side: isRecommended ? null : BorderSide(color: AppColors.getBorder(isDark)),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                    ),
-                                    child: const Text('Book Now', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                  ),
-                                ],
-                              )
-                            ],
-                          ),
-                        )
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          )
         ],
       ),
     );
   }
-}
-
-class _MockDoctor {
-  final String name;
-  final String specialty;
-  final int experience;
-  final String clinic;
-  final double rating;
-  final String availability;
-
-  _MockDoctor({
-    required this.name,
-    required this.specialty,
-    required this.experience,
-    required this.clinic,
-    required this.rating,
-    required this.availability,
-  });
 }

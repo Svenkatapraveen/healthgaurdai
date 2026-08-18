@@ -118,6 +118,18 @@ class FirebaseDbService implements DatabaseService {
     return query.docs.map((doc) => _mapToAppointment(doc)).toList();
   }
 
+  Stream<List<AppointmentModel>> streamUserAppointments(String userId) {
+    return _firestore
+        .collection('appointments')
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) {
+          final list = snapshot.docs.map((doc) => _mapToAppointment(doc)).toList();
+          list.sort((a, b) => b.preferredDateTime.compareTo(a.preferredDateTime));
+          return list;
+        });
+  }
+
   Stream<List<AppointmentModel>> streamAllAppointmentsAdmin() {
     return _firestore
         .collection('appointments')
@@ -154,52 +166,223 @@ class FirebaseDbService implements DatabaseService {
     final data = doc.data()!;
     return AppointmentModel(
       id: data['id'] ?? doc.id,
-      userId: data['userId'] ?? '',
+      userId: data['userId'] ?? data['patientId'] ?? '',
       patientName: data['patientName'] ?? 'Unknown',
-      mobileNumber: data['mobileNumber'] ?? '',
+      patientEmail: data['patientEmail'] ?? '',
+      mobileNumber: data['mobileNumber'] ?? data['patientMobile'] ?? '',
+      doctorId: data['doctorId'] ?? '',
+      doctorName: data['doctorName'] ?? '',
+      doctorSpecialty: data['doctorSpecialty'] ?? '',
       preferredDateTime: data['preferredDateTime'] is Timestamp 
           ? (data['preferredDateTime'] as Timestamp).toDate() 
-          : DateTime.now(),
-      doctorSpecialty: data['doctorSpecialty'] ?? '',
+          : (data['appointmentDate'] is Timestamp ? (data['appointmentDate'] as Timestamp).toDate() : DateTime.now()),
       symptomsSummary: data['symptomsSummary'] ?? '',
+      reportId: data['reportId'] ?? '',
       reportFileName: data['reportFileName'] ?? '',
       reportUrl: data['reportUrl'] ?? '',
       reportStoragePath: data['reportStoragePath'] ?? '',
       reportUploadedAt: data['reportUploadedAt'] is Timestamp 
           ? (data['reportUploadedAt'] as Timestamp).toDate() 
           : null,
+      riskScore: (data['riskScore'] is num) ? (data['riskScore'] as num).toDouble() : 0.0,
+      riskLevel: data['riskLevel'] ?? 'Moderate Risk',
       status: data['status'] ?? 'Pending',
+      rejectionReason: data['rejectionReason'],
+      previousAppointmentDate: data['previousAppointmentDate'] is Timestamp 
+          ? (data['previousAppointmentDate'] as Timestamp).toDate() 
+          : null,
+      previousAppointmentTime: data['previousAppointmentTime'],
+      completedAt: data['completedAt'] is Timestamp 
+          ? (data['completedAt'] as Timestamp).toDate() 
+          : null,
+      completedBy: data['completedBy'],
       createdAt: data['createdAt'] is Timestamp 
           ? (data['createdAt'] as Timestamp).toDate() 
           : DateTime.now(),
+      updatedAt: data['updatedAt'] is Timestamp 
+          ? (data['updatedAt'] as Timestamp).toDate() 
+          : null,
     );
+  }
+
+  @override
+  Future<List<AppointmentModel>> getDoctorAppointments(String doctorId) async {
+    final query = await _firestore
+        .collection('appointments')
+        .where('doctorId', isEqualTo: doctorId)
+        .get();
+
+    final appointments = query.docs.map((doc) => _mapToAppointment(doc)).toList();
+    appointments.sort((a, b) => b.preferredDateTime.compareTo(a.preferredDateTime));
+    return appointments;
+  }
+
+  Stream<List<AppointmentModel>> streamDoctorAppointments(String doctorId) {
+    return _firestore
+        .collection('appointments')
+        .where('doctorId', isEqualTo: doctorId)
+        .snapshots()
+        .map((snapshot) {
+      final list = snapshot.docs.map((doc) => _mapToAppointment(doc)).toList();
+      list.sort((a, b) => b.preferredDateTime.compareTo(a.preferredDateTime));
+      return list;
+    });
+  }
+
+  @override
+  Future<ConsultationModel?> getConsultationByAppointmentId(String appointmentId) async {
+    final query = await _firestore
+        .collection('consultations')
+        .where('appointmentId', isEqualTo: appointmentId)
+        .limit(1)
+        .get();
+
+    if (query.docs.isEmpty) return null;
+    return _mapToConsultation(query.docs.first);
+  }
+
+  @override
+  Future<List<ConsultationModel>> getDoctorConsultations(String doctorId) async {
+    final query = await _firestore
+        .collection('consultations')
+        .where('doctorId', isEqualTo: doctorId)
+        .get();
+
+    final list = query.docs.map((doc) => _mapToConsultation(doc)).toList();
+    list.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    return list;
+  }
+
+  ConsultationModel _mapToConsultation(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data()!;
+    return ConsultationModel(
+      id: data['id'] ?? doc.id,
+      appointmentId: data['appointmentId'] ?? '',
+      patientId: data['patientId'] ?? '',
+      patientName: data['patientName'] ?? '',
+      doctorId: data['doctorId'] ?? '',
+      doctorName: data['doctorName'] ?? '',
+      doctorSpecialty: data['doctorSpecialty'] ?? '',
+      clinicalAssessment: data['clinicalAssessment'] ?? data['doctorAssessment'] ?? '',
+      clinicalNotes: data['clinicalNotes'] ?? '',
+      recommendations: data['recommendations'] ?? '',
+      treatmentInstructions: data['treatmentInstructions'] ?? '',
+      followUpRequired: data['followUpRequired'] ?? false,
+      followUpDate: data['followUpDate'] is Timestamp ? (data['followUpDate'] as Timestamp).toDate() : null,
+      followUpNotes: data['followUpNotes'] ?? '',
+      status: data['status'] ?? 'Draft',
+      createdAt: data['createdAt'] is Timestamp ? (data['createdAt'] as Timestamp).toDate() : DateTime.now(),
+      updatedAt: data['updatedAt'] is Timestamp ? (data['updatedAt'] as Timestamp).toDate() : DateTime.now(),
+    );
+  }
+
+  @override
+  Future<void> saveConsultation(ConsultationModel consultation) async {
+    final data = {
+      'id': consultation.id,
+      'consultationId': consultation.id,
+      'appointmentId': consultation.appointmentId,
+      'patientId': consultation.patientId,
+      'patientName': consultation.patientName,
+      'doctorId': consultation.doctorId,
+      'doctorName': consultation.doctorName,
+      'doctorSpecialty': consultation.doctorSpecialty,
+      'clinicalAssessment': consultation.clinicalAssessment,
+      'doctorAssessment': consultation.clinicalAssessment,
+      'clinicalNotes': consultation.clinicalNotes,
+      'recommendations': consultation.recommendations,
+      'treatmentInstructions': consultation.treatmentInstructions,
+      'followUpRequired': consultation.followUpRequired,
+      'followUpDate': consultation.followUpDate != null ? Timestamp.fromDate(consultation.followUpDate!) : null,
+      'followUpNotes': consultation.followUpNotes,
+      'status': consultation.status,
+      'createdAt': Timestamp.fromDate(consultation.createdAt),
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    };
+    await _firestore.collection('consultations').doc(consultation.id).set(data, SetOptions(merge: true));
+  }
+
+  @override
+  Future<void> completeConsultation(String consultationId, String appointmentId, String doctorId) async {
+    final now = DateTime.now();
+    await _firestore.collection('appointments').doc(appointmentId).update({
+      'status': 'Completed',
+      'completedAt': Timestamp.fromDate(now),
+      'completedBy': doctorId,
+      'updatedAt': Timestamp.fromDate(now),
+    });
+    await _firestore.collection('consultations').doc(consultationId).update({
+      'status': 'Completed',
+      'updatedAt': Timestamp.fromDate(now),
+    });
   }
 
   @override
   Future<void> addAppointment(AppointmentModel appointment) async {
     await _firestore.collection('appointments').doc(appointment.id).set({
       'id': appointment.id,
+      'appointmentId': appointment.id,
       'userId': appointment.userId,
+      'patientId': appointment.userId,
       'patientName': appointment.patientName,
+      'patientEmail': appointment.patientEmail,
       'mobileNumber': appointment.mobileNumber,
-      'preferredDateTime': Timestamp.fromDate(appointment.preferredDateTime),
+      'patientMobile': appointment.mobileNumber,
+      'doctorId': appointment.doctorId,
+      'doctorName': appointment.doctorName,
       'doctorSpecialty': appointment.doctorSpecialty,
+      'preferredDateTime': Timestamp.fromDate(appointment.preferredDateTime),
+      'appointmentDate': Timestamp.fromDate(appointment.preferredDateTime),
+      'appointmentTime': '${appointment.preferredDateTime.hour.toString().padLeft(2, '0')}:${appointment.preferredDateTime.minute.toString().padLeft(2, '0')}',
       'symptomsSummary': appointment.symptomsSummary,
+      'reportId': appointment.reportId,
       'reportFileName': appointment.reportFileName,
       'reportUrl': appointment.reportUrl,
       'reportStoragePath': appointment.reportStoragePath,
       'reportUploadedAt': appointment.reportUploadedAt != null 
           ? Timestamp.fromDate(appointment.reportUploadedAt!) 
           : Timestamp.fromDate(DateTime.now()),
+      'riskScore': appointment.riskScore,
+      'riskLevel': appointment.riskLevel,
       'status': appointment.status,
       'createdAt': Timestamp.fromDate(appointment.createdAt),
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
     });
   }
 
   @override
-  Future<void> updateAppointmentStatus(String appointmentId, String status) async {
-    await _firestore.collection('appointments').doc(appointmentId).update({
+  Future<void> updateAppointmentStatus(String appointmentId, String status, {String? rejectionReason}) async {
+    final Map<String, dynamic> updateData = {
       'status': status,
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    };
+    if (rejectionReason != null) {
+      updateData['rejectionReason'] = rejectionReason;
+    }
+    await _firestore.collection('appointments').doc(appointmentId).update(updateData);
+  }
+
+  @override
+  Future<void> rescheduleAppointment(String appointmentId, DateTime newDateTime) async {
+    final docRef = _firestore.collection('appointments').doc(appointmentId);
+    final snapshot = await docRef.get();
+    DateTime? prevDate;
+    if (snapshot.exists && snapshot.data() != null) {
+      final data = snapshot.data()!;
+      if (data['preferredDateTime'] is Timestamp) {
+        prevDate = (data['preferredDateTime'] as Timestamp).toDate();
+      }
+    }
+
+    final timeStr = '${newDateTime.hour.toString().padLeft(2, '0')}:${newDateTime.minute.toString().padLeft(2, '0')}';
+    await docRef.update({
+      'status': 'Rescheduled',
+      'preferredDateTime': Timestamp.fromDate(newDateTime),
+      'appointmentDate': Timestamp.fromDate(newDateTime),
+      'appointmentTime': timeStr,
+      'previousAppointmentDate': prevDate != null ? Timestamp.fromDate(prevDate) : null,
+      'previousAppointmentTime': prevDate != null ? '${prevDate.hour.toString().padLeft(2, '0')}:${prevDate.minute.toString().padLeft(2, '0')}' : null,
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
     });
   }
 

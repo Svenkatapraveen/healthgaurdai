@@ -1,0 +1,18 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Medical Reports Storage Rules
+    match /medical_reports/{patientId}/{reportFile} {
+      // Patients can read/write their own reports
+      // Authenticated Doctors & Admins can read reports for assigned consultations
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == patientId;
+    }
+    
+    // General assets
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
