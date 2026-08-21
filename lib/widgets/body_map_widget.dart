@@ -8,12 +8,12 @@ class BodyMapWidget extends StatelessWidget {
   final ValueChanged<String> onSelectBodyArea;
 
   const BodyMapWidget({
-    Key? key,
+    super.key,
     required this.viewMode,
     required this.selectedBodyArea,
     required this.onViewModeChanged,
     required this.onSelectBodyArea,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,12 +25,12 @@ class BodyMapWidget extends StatelessWidget {
         color: isDark ? const Color(0xFF0C182E) : const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? AppColors.darkBorder : Colors.white.withOpacity(0.1),
+          color: isDark ? AppColors.darkBorder : Colors.white.withValues(alpha: 0.1),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -65,7 +65,7 @@ class BodyMapWidget extends StatelessWidget {
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF070F1E) : const Color(0xFF0F172A),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.05)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
             ),
             child: viewMode == 'front' ? _buildFrontViewDiagram(isDark) : _buildBackViewDiagram(isDark),
           ),
@@ -100,7 +100,7 @@ class BodyMapWidget extends StatelessWidget {
           boxShadow: isActive
               ? [
                   BoxShadow(
-                    color: AppColors.primaryTeal.withOpacity(0.4),
+                    color: AppColors.primaryTeal.withValues(alpha: 0.4),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   )
@@ -280,7 +280,7 @@ class BodyMapWidget extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: isSelected
-              ? AppColors.primaryTeal.withOpacity(0.3)
+              ? AppColors.primaryTeal.withValues(alpha: 0.3)
               : const Color(0xFF1E293B),
           border: Border.all(
             color: isSelected ? AppColors.primaryTeal : Colors.white24,
@@ -289,7 +289,7 @@ class BodyMapWidget extends StatelessWidget {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primaryTeal.withOpacity(0.5),
+                    color: AppColors.primaryTeal.withValues(alpha: 0.5),
                     blurRadius: 12,
                     spreadRadius: 2,
                   )
@@ -322,7 +322,7 @@ class BodyMapWidget extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           color: isSelected
-              ? AppColors.primaryTeal.withOpacity(0.3)
+              ? AppColors.primaryTeal.withValues(alpha: 0.3)
               : const Color(0xFF1E293B),
           border: Border.all(
             color: isSelected ? AppColors.primaryTeal : Colors.white24,
@@ -331,7 +331,7 @@ class BodyMapWidget extends StatelessWidget {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primaryTeal.withOpacity(0.5),
+                    color: AppColors.primaryTeal.withValues(alpha: 0.5),
                     blurRadius: 12,
                     spreadRadius: 2,
                   )
@@ -364,7 +364,7 @@ class BodyMapWidget extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           color: isSelected
-              ? AppColors.primaryTeal.withOpacity(0.3)
+              ? AppColors.primaryTeal.withValues(alpha: 0.3)
               : const Color(0xFF1E293B),
           border: Border.all(
             color: isSelected ? AppColors.primaryTeal : Colors.white24,
@@ -373,7 +373,7 @@ class BodyMapWidget extends StatelessWidget {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primaryTeal.withOpacity(0.5),
+                    color: AppColors.primaryTeal.withValues(alpha: 0.5),
                     blurRadius: 12,
                     spreadRadius: 2,
                   )

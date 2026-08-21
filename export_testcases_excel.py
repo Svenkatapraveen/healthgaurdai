@@ -20,7 +20,7 @@ def generate_test_case_export():
         line_str = line.strip()
         if "<Module" in line_str:
             mod_part = line_str.split("<Module ")[-1].rstrip(">").strip("'").strip('"')
-            current_module = mod_part
+            current_module = mod_part.replace("\\", "/")
         elif "<Class" in line_str:
             cls_part = line_str.split("<Class ")[-1].rstrip(">").strip("'").strip('"')
             current_class = cls_part
@@ -50,13 +50,17 @@ def generate_test_case_export():
                 category = "General Automation"
 
             # Framework mapping
-            if "web/" in current_module or "test_web" in current_module:
+            if "web" in current_module or current_module in [
+                "test_admin_portal.py", "test_appointments_booking.py", "test_auth_scenarios.py",
+                "test_dashboard_metrics.py", "test_emergency_alerts.py", "test_responsive_ui.py",
+                "test_symptom_assessment.py"
+            ]:
                 fw_type = "Selenium Web UI"
-            elif "mobile/" in current_module:
+            elif "mobile" in current_module:
                 fw_type = "Appium Mobile"
-            elif "api/" in current_module:
+            elif "api" in current_module:
                 fw_type = "REST API"
-            elif "performance/" in current_module:
+            elif "performance" in current_module:
                 fw_type = "Locust / Performance"
             else:
                 fw_type = "Automated Engine"

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 
 class EmergencyAlertScreen extends StatefulWidget {
-  const EmergencyAlertScreen({Key? key}) : super(key: key);
+  const EmergencyAlertScreen({super.key});
 
   @override
   State<EmergencyAlertScreen> createState() => _EmergencyAlertScreenState();
@@ -125,10 +125,10 @@ class _EmergencyAlertScreenState extends State<EmergencyAlertScreen> with Single
                   width: 140,
                   height: 140,
                   decoration: BoxDecoration(
-                    color: AppColors.riskCritical.withOpacity(0.15),
+                    color: AppColors.riskCritical.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: AppColors.riskCritical.withOpacity(0.4),
+                      color: AppColors.riskCritical.withValues(alpha: 0.4),
                       width: 3,
                     ),
                   ),
@@ -201,7 +201,7 @@ class _EmergencyAlertScreenState extends State<EmergencyAlertScreen> with Single
               icon: const Icon(Icons.sms, size: 24),
               label: const Text('Notify Family Contacts', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white.withOpacity(0.12),
+                backgroundColor: Colors.white.withValues(alpha: 0.12),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -230,9 +230,9 @@ class _EmergencyAlertScreenState extends State<EmergencyAlertScreen> with Single
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
+        color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -253,7 +253,7 @@ class _EmergencyAlertScreenState extends State<EmergencyAlertScreen> with Single
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(

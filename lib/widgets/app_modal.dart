@@ -97,7 +97,7 @@ class AppModal extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: (iconColor ?? AppColors.primaryBlue).withOpacity(0.1),
+                      color: (iconColor ?? AppColors.primaryBlue).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(icon, color: iconColor ?? AppColors.primaryBlue, size: 20),

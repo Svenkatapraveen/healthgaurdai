@@ -15,7 +15,7 @@ class CustomChart extends StatelessWidget {
   final double maxValue;
 
   const CustomChart({
-    Key? key,
+    super.key,
     required this.dataPoints,
     required this.labels,
     this.type = ChartType.line,
@@ -24,13 +24,13 @@ class CustomChart extends StatelessWidget {
     this.height = 180.0,
     this.title = '',
     this.maxValue = 100.0,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final themeColor = color ?? AppColors.primaryTeal;
-    final defaultGradients = gradientColors ?? [themeColor, themeColor.withOpacity(0.2)];
+    final defaultGradients = gradientColors ?? [themeColor, themeColor.withValues(alpha: 0.2)];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,7 +114,7 @@ class _ChartPainter extends CustomPainter {
 
     // Draw background arc
     final bgPaint = Paint()
-      ..color = isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)
+      ..color = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 24
       ..strokeCap = StrokeCap.round;
@@ -200,7 +200,7 @@ class _ChartPainter extends CustomPainter {
     final double spacing = (size.width / dataPoints.length) * 0.5;
 
     final gridPaint = Paint()
-      ..color = isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)
+      ..color = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)
       ..strokeWidth = 1.0;
 
     // Draw horizontal grid lines
@@ -220,15 +220,16 @@ class _ChartPainter extends CustomPainter {
       // Color coding logic
       Color col = themeColor;
       if (maxValue == 100) {
-        if (dataPoints[i] > 80) col = AppColors.riskLow;
-        else if (dataPoints[i] > 50) col = AppColors.riskModerate;
+        if (dataPoints[i] > 80) {
+          col = AppColors.riskLow;
+        } else if (dataPoints[i] > 50) col = AppColors.riskModerate;
         else col = AppColors.riskCritical;
       }
 
       barPaint.shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [col, col.withOpacity(0.4)],
+        colors: [col, col.withValues(alpha: 0.4)],
       ).createShader(Rect.fromLTWH(x, y, barWidth, height));
 
       // Draw rounded rect bar
@@ -282,7 +283,7 @@ class _ChartPainter extends CustomPainter {
     final double stepX = size.width / (dataPoints.length - 1);
 
     final gridPaint = Paint()
-      ..color = isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)
+      ..color = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)
       ..strokeWidth = 1.0;
 
     // Draw Grid Lines
@@ -325,8 +326,8 @@ class _ChartPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          themeColor.withOpacity(0.35),
-          themeColor.withOpacity(0.0),
+          themeColor.withValues(alpha: 0.35),
+          themeColor.withValues(alpha: 0.0),
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, chartHeight));
     canvas.drawPath(fillPath, fillPaint);
@@ -369,7 +370,7 @@ class _ChartPainter extends CustomPainter {
           Rect.fromLTWH(points[i].dx - valPainter.width / 2 - 4, points[i].dy - 22, valPainter.width + 8, valPainter.height + 2),
           Radius.circular(4),
         ),
-        Paint()..color = (isDark ? AppColors.darkSurface : Colors.white).withOpacity(0.8),
+        Paint()..color = (isDark ? AppColors.darkSurface : Colors.white).withValues(alpha: 0.8),
       );
       valPainter.paint(canvas, Offset(points[i].dx - valPainter.width / 2, points[i].dy - 21));
 

@@ -18,8 +18,6 @@ import 'screens/notifications_screen.dart';
 import 'screens/reminders_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/admin_dashboard.dart';
-import 'screens/doctor_login_screen.dart';
-import 'screens/doctor_dashboard.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
@@ -63,7 +61,6 @@ class _MyAppState extends State<MyApp> {
                 primary: AppColors.primaryBlue,
                 secondary: AppColors.primaryTeal,
                 surface: AppColors.lightSurface,
-                background: AppColors.lightBg,
                 error: AppColors.riskCritical,
               ),
               inputDecorationTheme: InputDecorationTheme(
@@ -89,6 +86,12 @@ class _MyAppState extends State<MyApp> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
+              scrollbarTheme: ScrollbarThemeData(
+                thumbVisibility: WidgetStateProperty.all(false),
+                trackVisibility: WidgetStateProperty.all(false),
+                thickness: WidgetStateProperty.all(6),
+                radius: const Radius.circular(4),
+              ),
             ),
 
             // Dark Theme Design
@@ -101,7 +104,6 @@ class _MyAppState extends State<MyApp> {
                 primary: AppColors.primaryTeal,
                 secondary: AppColors.accentCyan,
                 surface: AppColors.darkSurface,
-                background: AppColors.darkBg,
                 error: AppColors.riskCritical,
               ),
               inputDecorationTheme: InputDecorationTheme(
@@ -127,58 +129,175 @@ class _MyAppState extends State<MyApp> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
+              scrollbarTheme: ScrollbarThemeData(
+                thumbVisibility: WidgetStateProperty.all(false),
+                trackVisibility: WidgetStateProperty.all(false),
+                thickness: WidgetStateProperty.all(6),
+                radius: const Radius.circular(4),
+              ),
+            ),
+            scrollBehavior: const MaterialScrollBehavior().copyWith(
+              scrollbars: false,
             ),
             
             // App Navigation Routes
             initialRoute: '/',
             onGenerateRoute: (settings) {
-              if (settings.name != null && settings.name!.startsWith('/report')) {
-                String? id;
-                try {
-                  final uri = Uri.parse(settings.name!);
-                  if (uri.queryParameters.containsKey('id')) {
-                    id = uri.queryParameters['id'];
-                  } else {
-                    final parts = settings.name!.split('/report/');
-                    if (parts.length > 1 && parts[1].isNotEmpty) {
-                      id = parts[1].split('?')[0];
-                    }
+              final rawName = settings.name ?? '/';
+              Uri? uri;
+              try {
+                uri = Uri.parse(rawName);
+              } catch (_) {}
+              final path = uri?.path ?? rawName;
+
+              final user = _appState.currentUser;
+              final bool isAuthenticated = user != null;
+              final bool isAdmin = user != null && (user.isAdmin || user.role == 'admin');
+
+              // Public routes
+              if (path == '/' ||
+                  path == '/welcome' ||
+                  path == '/login' ||
+                  path == '/auth' ||
+                  path == '/register' ||
+                  path == '/forgot-password' ||
+                  path == '/admin-login' ||
+                  path == '/admin-forgot-password') {
+                if (path == '/login' || path == '/auth' || path == '/admin-login') {
+                  return MaterialPageRoute(
+                    builder: (context) => const LoginScreen(),
+                    settings: settings,
+                  );
+                }
+                if (path == '/register') {
+                  return MaterialPageRoute(
+                    builder: (context) => const RegisterScreen(),
+                    settings: settings,
+                  );
+                }
+                if (path == '/forgot-password' || path == '/admin-forgot-password') {
+                  return MaterialPageRoute(
+                    builder: (context) => const ForgotPasswordScreen(),
+                    settings: settings,
+                  );
+                }
+                if (path == '/welcome') {
+                  return MaterialPageRoute(
+                    builder: (context) => const WelcomeScreen(),
+                    settings: settings,
+                  );
+                }
+                return MaterialPageRoute(
+                  builder: (context) => const SplashScreen(),
+                  settings: settings,
+                );
+              }
+
+              // Protected routes check: Unauthenticated users redirected to Login
+              if (!isAuthenticated) {
+                return MaterialPageRoute(
+                  builder: (context) => const LoginScreen(),
+                  settings: RouteSettings(name: '/login', arguments: settings.arguments),
+                );
+              }
+
+              if (path == '/admin-dashboard' || path.startsWith('/admin')) {
+                if (!isAdmin) {
+                  return MaterialPageRoute(
+                    builder: (context) => const MainDashboard(),
+                    settings: const RouteSettings(name: '/dashboard'),
+                  );
+                }
+                return MaterialPageRoute(
+                  builder: (context) => const AdminDashboardScreen(),
+                  settings: settings,
+                );
+              }
+
+              // Role check: Admin trying to access patient home dashboard directly
+              if (path == '/dashboard' && isAdmin) {
+                return MaterialPageRoute(
+                  builder: (context) => const AdminDashboardScreen(),
+                  settings: const RouteSettings(name: '/admin-dashboard'),
+                );
+              }
+
+              // Protected Patient Routes
+              if (path == '/report' || rawName.startsWith('/report')) {
+                String? id = uri?.queryParameters['id'];
+                if (id == null && rawName.contains('/report/')) {
+                  final parts = rawName.split('/report/');
+                  if (parts.length > 1 && parts[1].isNotEmpty) {
+                    id = parts[1].split('?')[0];
                   }
-                } catch (_) {}
+                }
                 return MaterialPageRoute(
                   builder: (context) => PdfReportScreen(reportId: id),
                   settings: settings,
                 );
               }
-              return null;
-            },
-            routes: {
-              '/': (context) => const SplashScreen(),
-              '/welcome': (context) => const WelcomeScreen(),
-              '/auth': (context) => const LoginScreen(),
-              '/login': (context) => const LoginScreen(),
-              '/register': (context) => const RegisterScreen(),
-              '/forgot-password': (context) => const ForgotPasswordScreen(),
-              '/admin-login': (context) => const LoginScreen(),
-              '/admin-forgot-password': (context) => const ForgotPasswordScreen(),
-              '/dashboard': (context) => const MainDashboard(),
-              '/assessment': (context) => const AssessmentWizard(),
-              '/results': (context) => const AnalysisResultsScreen(),
-              '/forecast': (context) => const FutureRiskForecastScreen(),
-              '/lifestyle': (context) => const LifestyleDashboard(),
-              '/trends': (context) => const HealthTrendsScreen(),
-              '/history': (context) => const HealthHistoryScreen(),
-              '/report': (context) => const PdfReportScreen(),
-              '/booking': (context) => const BookingWizardScreen(),
-              '/my-appointments': (context) => const BookingWizardScreen(),
-              '/recommendations': (context) => const BookingWizardScreen(),
-              '/emergency': (context) => const EmergencyAlertScreen(),
-              '/notifications': (context) => const NotificationsScreen(),
-              '/reminders': (context) => const MedicineReminderScreen(),
-              '/profile': (context) => const ProfileScreen(),
-              '/admin-dashboard': (context) => const AdminDashboardScreen(),
-              '/doctor-login': (context) => const DoctorLoginScreen(),
-              '/doctor-dashboard': (context) => const DoctorDashboardScreen(),
+
+              if (path == '/dashboard') {
+                return MaterialPageRoute(
+                  builder: (context) => const MainDashboard(),
+                  settings: settings,
+                );
+              }
+
+              if (path == '/assessment') {
+                return MaterialPageRoute(
+                  builder: (context) => const AssessmentWizard(),
+                  settings: settings,
+                );
+              }
+
+              if (path == '/results') {
+                return MaterialPageRoute(
+                  builder: (context) => const AnalysisResultsScreen(),
+                  settings: settings,
+                );
+              }
+
+              if (path == '/booking' || path == '/my-appointments' || path == '/recommendations') {
+                int tab = 0;
+                if (path == '/my-appointments' || uri?.queryParameters['tab'] == '1' || uri?.queryParameters['tab'] == 'my-appointments') {
+                  tab = 1;
+                }
+                return MaterialPageRoute(
+                  builder: (context) => BookingWizardScreen(initialTab: tab),
+                  settings: settings,
+                );
+              }
+
+              if (path == '/emergency') {
+                return MaterialPageRoute(builder: (context) => const EmergencyAlertScreen(), settings: settings);
+              }
+              if (path == '/notifications') {
+                return MaterialPageRoute(builder: (context) => const NotificationsScreen(), settings: settings);
+              }
+              if (path == '/reminders') {
+                return MaterialPageRoute(builder: (context) => const MedicineReminderScreen(), settings: settings);
+              }
+              if (path == '/profile') {
+                return MaterialPageRoute(builder: (context) => const ProfileScreen(), settings: settings);
+              }
+              if (path == '/forecast') {
+                return MaterialPageRoute(builder: (context) => const FutureRiskForecastScreen(), settings: settings);
+              }
+              if (path == '/lifestyle') {
+                return MaterialPageRoute(builder: (context) => const LifestyleDashboard(), settings: settings);
+              }
+              if (path == '/trends') {
+                return MaterialPageRoute(builder: (context) => const HealthTrendsScreen(), settings: settings);
+              }
+              if (path == '/history') {
+                return MaterialPageRoute(builder: (context) => const HealthHistoryScreen(), settings: settings);
+              }
+
+              return MaterialPageRoute(
+                builder: (context) => isAdmin ? const AdminDashboardScreen() : const MainDashboard(),
+                settings: settings,
+              );
             },
           );
         },

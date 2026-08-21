@@ -4,7 +4,7 @@ import '../widgets/glass_card.dart';
 import '../widgets/custom_chart.dart';
 
 class HealthTrendsScreen extends StatelessWidget {
-  const HealthTrendsScreen({Key? key}) : super(key: key);
+  const HealthTrendsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

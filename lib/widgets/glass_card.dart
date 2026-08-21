@@ -11,7 +11,7 @@ class GlassCard extends StatelessWidget {
   final double blurSigma;
 
   const GlassCard({
-    Key? key,
+    super.key,
     required this.child,
     this.padding,
     this.margin,
@@ -19,23 +19,23 @@ class GlassCard extends StatelessWidget {
     this.borderColor,
     this.gradientColors,
     this.blurSigma = 15.0,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     final borderCol = borderColor ?? 
-        (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05));
+        (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05));
 
     final defaultGradColors = isDark
         ? [
-            Color(0xFF1E293B).withOpacity(0.35),
-            Color(0xFF0F172A).withOpacity(0.15),
+            Color(0xFF1E293B).withValues(alpha: 0.35),
+            Color(0xFF0F172A).withValues(alpha: 0.15),
           ]
         : [
-            Colors.white.withOpacity(0.65),
-            Colors.white.withOpacity(0.25),
+            Colors.white.withValues(alpha: 0.65),
+            Colors.white.withValues(alpha: 0.25),
           ];
 
     return Container(
@@ -44,7 +44,7 @@ class GlassCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black.withOpacity(0.2) : Colors.grey.withOpacity(0.1),
+            color: isDark ? Colors.black.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.1),
             blurRadius: 20,
             spreadRadius: -2,
             offset: Offset(0, 8),

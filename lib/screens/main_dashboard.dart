@@ -14,7 +14,7 @@ import 'assessment_wizard.dart';
 import 'booking_screens.dart';
 
 class MainDashboard extends StatefulWidget {
-  const MainDashboard({Key? key}) : super(key: key);
+  const MainDashboard({super.key});
 
   @override
   State<MainDashboard> createState() => _MainDashboardState();
@@ -22,6 +22,15 @@ class MainDashboard extends StatefulWidget {
 
 class _MainDashboardState extends State<MainDashboard> {
   int _currentIndex = 0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final routeName = ModalRoute.of(context)?.settings.name;
+    if (routeName != null && routeName.contains('tab=reports')) {
+      _currentIndex = 2;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,7 +107,7 @@ class _MainDashboardState extends State<MainDashboard> {
       currentRoute: _currentIndex == 1
           ? '/assessment'
           : _currentIndex == 2
-              ? '/report'
+              ? '/dashboard?tab=reports'
               : _currentIndex == 3
                   ? '/my-appointments'
                   : '/dashboard',
@@ -146,7 +155,7 @@ class _MainDashboardState extends State<MainDashboard> {
                   value: riskLevel,
                   subtitle: latestAssessment != null ? 'Score: ${latestAssessment.overallRiskScore.toInt()}/100' : 'No recent check',
                   icon: Icons.shield_outlined,
-                  iconBgColor: AppColors.primaryTeal.withOpacity(0.15),
+                  iconBgColor: AppColors.primaryTeal.withValues(alpha: 0.15),
                   iconColor: AppColors.primaryTeal,
                   onTap: () {
                     if (latestAssessment != null) {
@@ -161,7 +170,7 @@ class _MainDashboardState extends State<MainDashboard> {
                   value: latestAssessment != null ? '${latestAssessment.date.day}/${latestAssessment.date.month}/${latestAssessment.date.year}' : 'Not Taken',
                   subtitle: latestAssessment != null ? '${latestAssessment.symptoms.length} symptoms reported' : 'Click to start',
                   icon: Icons.assignment_outlined,
-                  iconBgColor: AppColors.primaryBlue.withOpacity(0.15),
+                  iconBgColor: AppColors.primaryBlue.withValues(alpha: 0.15),
                   iconColor: AppColors.primaryBlue,
                   onTap: () {
                     if (latestAssessment != null) {
@@ -176,7 +185,7 @@ class _MainDashboardState extends State<MainDashboard> {
                   value: nextAppt != null ? '${nextAppt.preferredDateTime.day}/${nextAppt.preferredDateTime.month}' : 'None Scheduled',
                   subtitle: nextAppt != null ? 'Dr. ${nextAppt.doctorName}' : 'Book consultation',
                   icon: Icons.calendar_month_outlined,
-                  iconBgColor: AppColors.warning.withOpacity(0.15),
+                  iconBgColor: AppColors.warning.withValues(alpha: 0.15),
                   iconColor: AppColors.warning,
                   onTap: () => AppLayout.safeNavigate(context, '/my-appointments', '/dashboard'),
                 ),
@@ -185,9 +194,9 @@ class _MainDashboardState extends State<MainDashboard> {
                   value: '${state.assessments.length}',
                   subtitle: 'Available PDF records',
                   icon: Icons.description_outlined,
-                  iconBgColor: AppColors.info.withOpacity(0.15),
+                  iconBgColor: AppColors.info.withValues(alpha: 0.15),
                   iconColor: AppColors.info,
-                  onTap: () => AppLayout.safeNavigate(context, '/report', '/dashboard'),
+                  onTap: () => setState(() => _currentIndex = 2),
                 ),
               ],
             );
@@ -216,7 +225,7 @@ class _MainDashboardState extends State<MainDashboard> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryTeal.withOpacity(0.15),
+                        color: AppColors.primaryTeal.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.add_task, color: AppColors.primaryTeal, size: 22),
@@ -244,7 +253,7 @@ class _MainDashboardState extends State<MainDashboard> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryBlue.withOpacity(0.15),
+                        color: AppColors.primaryBlue.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.calendar_month, color: AppColors.primaryBlue, size: 22),
@@ -314,7 +323,7 @@ class _MainDashboardState extends State<MainDashboard> {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primaryBlue.withOpacity(0.1),
+                                  color: AppColors.primaryBlue.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: const Icon(Icons.article_outlined, color: AppColors.primaryBlue, size: 20),
@@ -379,9 +388,11 @@ class _MainDashboardState extends State<MainDashboard> {
                           children: [
                             CircleAvatar(
                               radius: 22,
-                              backgroundColor: AppColors.primaryTeal.withOpacity(0.2),
+                              backgroundColor: AppColors.primaryTeal.withValues(alpha: 0.2),
                               child: Text(
-                                nextAppt.doctorName.characters.first.toUpperCase(),
+                                nextAppt.doctorName.trim().isNotEmpty
+                                    ? nextAppt.doctorName.trim().characters.first.toUpperCase()
+                                    : 'D',
                                 style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryTeal),
                               ),
                             ),
@@ -430,7 +441,7 @@ class _MainDashboardState extends State<MainDashboard> {
                           label: 'View Appointment Details',
                           isFullWidth: true,
                           size: AppButtonSize.small,
-                          onPressed: () => setState(() => _currentIndex = 3),
+                          onPressed: () => AppLayout.safeNavigate(context, '/my-appointments', '/dashboard'),
                         ),
                       ],
                     ],
@@ -480,7 +491,7 @@ class _MainDashboardState extends State<MainDashboard> {
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryBlue.withOpacity(0.12),
+                        color: AppColors.primaryBlue.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.primaryBlue, size: 28),

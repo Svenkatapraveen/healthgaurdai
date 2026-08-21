@@ -7,87 +7,118 @@ import '../state/app_state.dart';
 
 Widget _buildAuthCenteredShell(BuildContext context, Widget formChild) {
   final bool isDark = Theme.of(context).brightness == Brightness.dark;
+  final double screenHeight = MediaQuery.of(context).size.height;
 
   return Scaffold(
     backgroundColor: isDark ? AppColors.darkBg : AppColors.navyDark,
-    body: Container(
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment.topCenter,
-          radius: 1.2,
-          colors: [
-            AppColors.primaryBlue.withOpacity(0.4),
-            isDark ? AppColors.darkBg : AppColors.navyDark,
-          ],
+    body: SizedBox.expand(
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.topCenter,
+            radius: 1.3,
+            colors: [
+              AppColors.primaryBlue.withValues(alpha: 0.35),
+              isDark ? AppColors.darkBg : AppColors.navyDark,
+            ],
+          ),
         ),
-      ),
-      child: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 450),
-            child: AppCard(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // App Branding & Back Button Header Row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          Icons.arrow_back,
-                          color: AppColors.getTextPrimary(isDark),
-                          size: 20,
+        child: ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(
+            scrollbars: false,
+          ),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: screenHeight > 64 ? screenHeight - 64 : 500,
+              ),
+              child: IntrinsicHeight(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Spacer(),
+                    // Header Logo & Branding
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryTeal,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primaryTeal.withValues(alpha: 0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.health_and_safety,
+                            color: Colors.white,
+                            size: 28,
+                          ),
                         ),
-                        tooltip: 'Back to Welcome',
-                        onPressed: () {
-                          if (Navigator.of(context).canPop()) {
-                            Navigator.of(context).pop();
-                          } else {
-                            Navigator.of(context).pushNamed('/welcome');
-                          }
-                        },
-                      ),
-                      InkWell(
-                        onTap: () => Navigator.of(context).pushNamed('/welcome'),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryTeal,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(
-                                Icons.health_and_safety,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'HealthGuard AI',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.getTextPrimary(isDark),
-                                letterSpacing: -0.4,
-                              ),
-                            ),
-                          ],
+                        const SizedBox(width: 12),
+                        Text(
+                          'HealthGuard AI',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.getTextPrimary(isDark),
+                            letterSpacing: -0.5,
+                          ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'AI-Powered Healthcare & Early Risk Assessment',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.getTextSecondary(isDark),
                       ),
-                      const SizedBox(width: 40), // Spacing placeholder for balanced header alignment
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  formChild,
-                ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Glassmorphism Card
+                    Container(
+                      constraints: const BoxConstraints(maxWidth: 450),
+                      width: double.infinity,
+                      child: AppCard(
+                        padding: const EdgeInsets.all(32),
+                        child: formChild,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Footer Text
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.shield_outlined, size: 14, color: AppColors.primaryTeal),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Secure • Intelligent • Healthcare',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.getTextSecondary(isDark).withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                  ],
+                ),
               ),
             ),
           ),
@@ -98,10 +129,10 @@ Widget _buildAuthCenteredShell(BuildContext context, Widget formChild) {
 }
 
 // ==========================================
-// 1. PATIENT LOGIN SCREEN
+// 1. UNIFIED LOGIN SCREEN
 // ==========================================
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -112,6 +143,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _rememberMe = true;
+  String _selectedRole = 'patient'; // 'patient' or 'admin'
   String? _errorMessage;
 
   @override
@@ -133,17 +166,27 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (success && mounted) {
-        if (state.currentUser?.isAdmin == true) {
-          Navigator.pushNamedAndRemoveUntil(context, '/admin-dashboard', (route) => false);
-        } else {
-          Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false);
+        final user = state.currentUser;
+        if (_selectedRole == 'admin' && !(user?.isAdmin ?? false) && user?.role != 'admin') {
+          await state.logout();
+          setState(() => _errorMessage = 'Access Denied: Account does not have Administrator privileges.');
+          return;
         }
+        _redirectUserBasedOnRole(state);
       } else if (mounted) {
-        setState(() => _errorMessage = 'Invalid email or password. Please check your credentials.');
+        setState(() => _errorMessage = 'Invalid email or password. Please try again.');
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _errorMessage = 'Login error: ${e.toString().replaceAll('Exception: ', '')}');
+        String msg = e.toString().replaceAll('Exception: ', '');
+        if (msg.contains('user-not-found') || msg.contains('No account found')) {
+          msg = 'No account found with this email.';
+        } else if (msg.contains('wrong-password') || msg.contains('invalid-credential') || msg.contains('Incorrect password')) {
+          msg = 'Invalid email or password. Please try again.';
+        } else if (msg.contains('user-disabled')) {
+          msg = 'Your account has been disabled. Please contact hospital administration.';
+        }
+        setState(() => _errorMessage = msg);
       }
     }
   }
@@ -155,16 +198,27 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final success = await state.loginWithGoogle();
       if (success && mounted) {
-        if (state.currentUser?.isAdmin == true) {
-          Navigator.pushNamedAndRemoveUntil(context, '/admin-dashboard', (route) => false);
-        } else {
-          Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false);
+        final user = state.currentUser;
+        if (_selectedRole == 'admin' && !(user?.isAdmin ?? false) && user?.role != 'admin') {
+          await state.logout();
+          setState(() => _errorMessage = 'Access Denied: Account does not have Administrator privileges.');
+          return;
         }
+        _redirectUserBasedOnRole(state);
       }
     } catch (e) {
       if (mounted) {
         setState(() => _errorMessage = 'Google Sign-in failed: ${e.toString()}');
       }
+    }
+  }
+
+  void _redirectUserBasedOnRole(AppState state) {
+    final user = state.currentUser;
+    if (user != null && (user.isAdmin || user.role == 'admin')) {
+      Navigator.pushNamedAndRemoveUntil(context, '/admin-dashboard', (route) => false);
+    } else {
+      Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false);
     }
   }
 
@@ -193,22 +247,115 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Sign in to continue to your HealthGuard AI portal.',
+              'Sign in to continue to HealthGuard AI',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
                 color: AppColors.getTextSecondary(isDark),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+
+            // Role Selector: Login As
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Login As',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.getTextPrimary(isDark),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.all(4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => setState(() {
+                        _selectedRole = 'patient';
+                        _errorMessage = null;
+                      }),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _selectedRole == 'patient'
+                              ? AppColors.primaryTeal
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.person_outline, size: 16, color: _selectedRole == 'patient' ? Colors.white : AppColors.getTextSecondary(isDark)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Patient',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: _selectedRole == 'patient' ? Colors.white : AppColors.getTextSecondary(isDark),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => setState(() {
+                        _selectedRole = 'admin';
+                        _errorMessage = null;
+                      }),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _selectedRole == 'admin'
+                              ? AppColors.primaryBlue
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.admin_panel_settings_outlined, size: 16, color: _selectedRole == 'admin' ? Colors.white : AppColors.getTextSecondary(isDark)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Admin',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: _selectedRole == 'admin' ? Colors.white : AppColors.getTextSecondary(isDark),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
             if (_errorMessage != null) ...[
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.danger.withOpacity(0.1),
+                  color: AppColors.danger.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.danger.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
@@ -217,7 +364,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: const TextStyle(fontSize: 12, color: AppColors.danger),
+                        style: const TextStyle(fontSize: 12, color: AppColors.danger, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
@@ -227,13 +374,13 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
 
             AppTextField(
-              label: 'Email Address',
+              label: _selectedRole == 'admin' ? 'Admin ID / Email' : 'Email Address',
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
-              prefixIcon: Icons.email_outlined,
-              hint: 'name@example.com',
+              prefixIcon: _selectedRole == 'admin' ? Icons.admin_panel_settings_outlined : Icons.email_outlined,
+              hint: _selectedRole == 'admin' ? 'Enter admin email or ID' : 'Enter your email',
               validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Please enter your email';
+                if (v == null || v.trim().isEmpty) return _selectedRole == 'admin' ? 'Enter admin ID/email' : 'Enter your email';
                 if (!v.contains('@')) return 'Enter a valid email address';
                 return null;
               },
@@ -241,7 +388,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 16),
 
             AppTextField(
-              label: 'Password',
+              label: _selectedRole == 'admin' ? 'Admin Password' : 'Password',
               controller: _passwordController,
               obscureText: _obscurePassword,
               prefixIcon: Icons.lock_outline,
@@ -257,43 +404,71 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
               ),
               validator: (v) {
-                if (v == null || v.isEmpty) return 'Please enter your password';
+                if (v == null || v.isEmpty) return 'Enter your password';
                 return null;
               },
             ),
+            const SizedBox(height: 8),
 
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/forgot-password');
-                },
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: Checkbox(
+                        value: _rememberMe,
+                        activeColor: _selectedRole == 'admin' ? AppColors.primaryBlue : AppColors.primaryTeal,
+                        onChanged: (val) {
+                          if (val != null) setState(() => _rememberMe = val);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Remember me',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.getTextSecondary(isDark),
+                      ),
+                    ),
+                  ],
                 ),
-                child: const Text(
-                  'Forgot Password?',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primaryTeal,
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/forgot-password');
+                  },
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    'Forgot Password?',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: _selectedRole == 'admin' ? AppColors.primaryBlue : AppColors.primaryTeal,
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
             const SizedBox(height: 20),
 
             AppButton(
-              label: 'LOGIN',
+              label: _selectedRole == 'admin' ? 'SIGN IN AS ADMINISTRATOR' : 'SIGN IN TO PATIENT PORTAL',
+              icon: Icons.login,
               onPressed: _submit,
               isLoading: state.isLoading,
               isFullWidth: true,
               size: AppButtonSize.medium,
             ),
-            const SizedBox(height: 18),
 
+            const SizedBox(height: 18),
             Row(
               children: [
                 Expanded(child: Divider(color: AppColors.getBorder(isDark))),
@@ -321,54 +496,35 @@ class _LoginScreenState extends State<LoginScreen> {
               isFullWidth: true,
               size: AppButtonSize.medium,
             ),
-            const SizedBox(height: 24),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  "Don't have an account? ",
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.getTextSecondary(isDark),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.pushNamed(context, '/register');
-                  },
-                  child: const Text(
-                    'Register',
+            if (_selectedRole == 'patient') ...[
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "Don't have an account? ",
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primaryTeal,
+                      color: AppColors.getTextSecondary(isDark),
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.arrow_back, size: 14, color: AppColors.primaryTeal),
-                const SizedBox(width: 6),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.pushNamed(context, '/welcome');
-                  },
-                  child: const Text(
-                    'Back to Welcome Screen',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primaryTeal,
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pushNamed(context, '/register');
+                    },
+                    child: const Text(
+                      'Create Account',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryTeal,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -380,7 +536,7 @@ class _LoginScreenState extends State<LoginScreen> {
 // 2. PATIENT REGISTER SCREEN
 // ==========================================
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({Key? key}) : super(key: key);
+  const RegisterScreen({super.key});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -398,6 +554,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String _gender = 'Male';
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isSuccess = false;
   String? _errorMessage;
 
   @override
@@ -432,7 +589,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (success && mounted) {
-        Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false);
+        await state.logout();
+        setState(() {
+          _isSuccess = true;
+        });
       } else if (mounted) {
         setState(() => _errorMessage = 'Registration failed. Email may already be in use.');
       }
@@ -448,6 +608,49 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final state = AppStateProvider.of(context);
 
+    if (_isSuccess) {
+      return _buildAuthCenteredShell(
+        context,
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Icon(Icons.check_circle_outline, color: AppColors.success, size: 64),
+            const SizedBox(height: 16),
+            Text(
+              'Registration Successful!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: AppColors.getTextPrimary(isDark),
+                letterSpacing: -0.4,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Your account has been created successfully. Please login to continue.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.getTextSecondary(isDark),
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 28),
+            AppButton(
+              label: 'Go to Sign In',
+              isFullWidth: true,
+              size: AppButtonSize.medium,
+              onPressed: () {
+                Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+              },
+            ),
+          ],
+        ),
+      );
+    }
+
     return _buildAuthCenteredShell(
       context,
       Form(
@@ -457,10 +660,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Create Your Account',
+              'Create Your HealthGuard AI Account',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 22,
+                fontSize: 20,
                 fontWeight: FontWeight.w800,
                 color: AppColors.getTextPrimary(isDark),
                 letterSpacing: -0.4,
@@ -468,22 +671,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Join HealthGuard AI for intelligent health assessment and healthcare management.',
+              'Sign up as a patient to access intelligent health assessments & personalized care.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 12,
                 color: AppColors.getTextSecondary(isDark),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             if (_errorMessage != null) ...[
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.danger.withOpacity(0.1),
+                  color: AppColors.danger.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.danger.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
@@ -505,7 +708,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               label: 'Full Name',
               controller: _nameController,
               prefixIcon: Icons.person_outline,
-              hint: 'John Doe',
+              hint: 'Enter your full name',
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'Please enter your full name';
                 return null;
@@ -518,7 +721,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
               prefixIcon: Icons.email_outlined,
-              hint: 'name@example.com',
+              hint: 'Enter your email',
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'Please enter your email';
                 if (!v.contains('@')) return 'Enter a valid email address';
@@ -536,7 +739,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     controller: _mobileController,
                     keyboardType: TextInputType.phone,
                     prefixIcon: Icons.phone_outlined,
-                    hint: '+1 555-0199',
+                    hint: 'Phone',
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -602,7 +805,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               controller: _passwordController,
               obscureText: _obscurePassword,
               prefixIcon: Icons.lock_outline,
-              hint: 'Create a password',
+              hint: 'Enter your password',
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
@@ -623,7 +826,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               controller: _confirmPasswordController,
               obscureText: _obscureConfirmPassword,
               prefixIcon: Icons.lock_reset_outlined,
-              hint: 'Re-enter password',
+              hint: 'Confirm password',
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
@@ -640,7 +843,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SizedBox(height: 22),
 
             AppButton(
-              label: 'REGISTER',
+              label: 'Create Account',
               onPressed: _submit,
               isLoading: state.isLoading,
               isFullWidth: true,
@@ -663,28 +866,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Navigator.pushNamed(context, '/login');
                   },
                   child: const Text(
-                    'Login',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primaryTeal,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.arrow_back, size: 14, color: AppColors.primaryTeal),
-                const SizedBox(width: 6),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.pushNamed(context, '/welcome');
-                  },
-                  child: const Text(
-                    'Back to Welcome Screen',
+                    'Sign In',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
@@ -705,7 +887,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 // 3. FORGOT PASSWORD SCREEN
 // ==========================================
 class ForgotPasswordScreen extends StatefulWidget {
-  const ForgotPasswordScreen({Key? key}) : super(key: key);
+  const ForgotPasswordScreen({super.key});
 
   @override
   State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
@@ -752,7 +934,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Reset Your Password',
+            'Forgot Password',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 22,
@@ -763,7 +945,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            "Enter your registered email address and we'll help you reset your password.",
+            'Enter your email address and we will send you a password reset link.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
@@ -776,9 +958,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.success.withOpacity(0.1),
+                color: AppColors.success.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.success.withOpacity(0.3)),
+                border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
               ),
               child: Column(
                 children: [
@@ -794,7 +976,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Please check your inbox at ${_emailController.text} for instructions.',
+                    'Password reset link sent. Please check your email.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12,
@@ -815,9 +997,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     prefixIcon: Icons.email_outlined,
-                    hint: 'name@example.com',
+                    hint: 'Enter your email',
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) return 'Please enter your email';
+                      if (v == null || v.trim().isEmpty) return 'Enter your email';
                       if (!v.contains('@')) return 'Enter a valid email address';
                       return null;
                     },
@@ -846,7 +1028,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   Navigator.pushNamed(context, '/login');
                 },
                 child: const Text(
-                  'Back to Login',
+                  'Back to Sign In',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,

@@ -1421,7 +1421,9 @@ class SymptomDatabaseService {
           if (locLower.contains('leg') && (bLower.contains('leg') || bLower.contains('knee'))) return true;
           if (locLower.contains('knee') && (bLower.contains('knee') || bLower.contains('leg'))) return true;
           if ((locLower.contains('foot') || locLower.contains('feet')) && 
-              (bLower.contains('foot') || bLower.contains('feet') || bLower.contains('ankle') || bLower.contains('toe'))) return true;
+              (bLower.contains('foot') || bLower.contains('feet') || bLower.contains('ankle') || bLower.contains('toe'))) {
+            return true;
+          }
           if (locLower.contains('arm') && (bLower.contains('arm') || bLower.contains('elbow'))) return true;
           if (locLower.contains('hand') && (bLower.contains('hand') || bLower.contains('finger'))) return true;
           if (locLower.contains('hip') && (bLower.contains('hip') || bLower.contains('pelvis') || bLower.contains('groin'))) return true;

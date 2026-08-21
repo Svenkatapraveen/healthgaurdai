@@ -4,7 +4,7 @@ import '../widgets/glass_card.dart';
 import '../widgets/custom_chart.dart';
 
 class LifestyleDashboard extends StatefulWidget {
-  const LifestyleDashboard({Key? key}) : super(key: key);
+  const LifestyleDashboard({super.key});
 
   @override
   State<LifestyleDashboard> createState() => _LifestyleDashboardState();
@@ -76,7 +76,7 @@ class _LifestyleDashboardState extends State<LifestyleDashboard> {
                     width: 70,
                     height: 70,
                     decoration: BoxDecoration(
-                      color: AppColors.primaryTeal.withOpacity(0.12),
+                      color: AppColors.primaryTeal.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,
@@ -224,7 +224,7 @@ class _LifestyleDashboardState extends State<LifestyleDashboard> {
         color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.15),
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.15),
         ),
       ),
       child: Column(
@@ -253,7 +253,7 @@ class _LifestyleDashboardState extends State<LifestyleDashboard> {
             child: ElevatedButton(
               onPressed: onTap,
               style: ElevatedButton.styleFrom(
-                backgroundColor: color.withOpacity(0.12),
+                backgroundColor: color.withValues(alpha: 0.12),
                 foregroundColor: color,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(vertical: 8),

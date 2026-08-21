@@ -11,7 +11,7 @@ import '../utils/pdf_generator_helper.dart';
 import '../utils/web_download_helper.dart';
 
 class AnalysisResultsScreen extends StatelessWidget {
-  const AnalysisResultsScreen({Key? key}) : super(key: key);
+  const AnalysisResultsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +74,7 @@ class AnalysisResultsScreen extends StatelessWidget {
                     const Spacer(),
                     Text(
                       'ID: ${assessment.id}',
-                      style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
                     ),
                   ],
                 ),
@@ -118,7 +118,7 @@ class AnalysisResultsScreen extends StatelessWidget {
                           const SizedBox(height: 8),
                           Text(
                             'Recommended Specialty: ${(assessment.details["recommendedDoctor"] as String?) ?? "General Practitioner"}',
-                            style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13, fontWeight: FontWeight.w600),
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13, fontWeight: FontWeight.w600),
                           ),
                         ],
                       ),
@@ -171,7 +171,7 @@ class AnalysisResultsScreen extends StatelessWidget {
                         children: assessment.symptoms.map((s) {
                           return Chip(
                             label: Text(s, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                            backgroundColor: AppColors.primaryBlue.withOpacity(0.1),
+                            backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.1),
                           );
                         }).toList(),
                       ),

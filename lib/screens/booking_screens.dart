@@ -6,6 +6,7 @@ import '../theme/colors.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_badge.dart';
+import '../widgets/app_modal.dart';
 import '../widgets/app_layout.dart';
 import '../widgets/app_sidebar.dart';
 import '../widgets/empty_state.dart';
@@ -15,14 +16,37 @@ import '../data/doctor_database.dart';
 import '../utils/pdf_generator_helper.dart';
 
 class BookingWizardScreen extends StatefulWidget {
-  const BookingWizardScreen({Key? key}) : super(key: key);
+  final int initialTab;
+
+  const BookingWizardScreen({super.key, this.initialTab = 0});
 
   @override
   State<BookingWizardScreen> createState() => _BookingWizardScreenState();
 }
 
 class _BookingWizardScreenState extends State<BookingWizardScreen> {
-  int _currentTab = 0; // 0 = Book Appointment, 1 = My Appointments
+  late int _currentTab;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentTab = widget.initialTab;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map && args.containsKey('tab')) {
+      setState(() {
+        _currentTab = args['tab'] as int;
+      });
+    } else if (ModalRoute.of(context)?.settings.name == '/my-appointments') {
+      setState(() {
+        _currentTab = 1;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +105,7 @@ class _BookingWizardScreenState extends State<BookingWizardScreen> {
 }
 
 class AppointmentBookingForm extends StatefulWidget {
-  const AppointmentBookingForm({Key? key}) : super(key: key);
+  const AppointmentBookingForm({super.key});
 
   @override
   State<AppointmentBookingForm> createState() => _AppointmentBookingFormState();
@@ -110,10 +134,10 @@ class _AppointmentBookingFormState extends State<AppointmentBookingForm> {
     'Neurologist',
     'Dermatologist',
     'Ophthalmologist',
-    'ENT Specialist',
+    'ENT',
     'Pulmonologist',
     'Gastroenterologist',
-    'Orthopedic Specialist',
+    'Orthopedic',
     'Urologist',
     'Gynecologist',
     'Psychiatrist',
@@ -134,12 +158,20 @@ class _AppointmentBookingFormState extends State<AppointmentBookingForm> {
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is AssessmentModel) {
       _attachedAssessment = args;
-      _specialty = args.details['recommendedDoctor']?.toString() ?? 'General Physician';
+      final rawDoctor = args.details['recommendedDoctor']?.toString() ?? 'General Physician';
+      _specialty = normalizeSpecialty(rawDoctor);
     } else if (_attachedAssessment == null && state.assessments.isNotEmpty) {
       _attachedAssessment = state.assessments.first;
       if (_attachedAssessment?.details['recommendedDoctor'] != null) {
-        _specialty = _attachedAssessment!.details['recommendedDoctor'].toString();
+        final rawDoctor = _attachedAssessment!.details['recommendedDoctor'].toString();
+        _specialty = normalizeSpecialty(rawDoctor);
       }
+    } else {
+      _specialty = normalizeSpecialty(_specialty);
+    }
+
+    if (!_specialties.contains(_specialty)) {
+      _specialty = 'General Physician';
     }
 
     final docs = getDoctorsBySpecialty(_specialty);
@@ -256,7 +288,7 @@ class _AppointmentBookingFormState extends State<AppointmentBookingForm> {
         setState(() => _isUploadingPdf = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Appointment booked successfully! Status: Pending Approval.'),
+            content: Text('Appointment request submitted successfully.'),
             backgroundColor: AppColors.success,
           ),
         );
@@ -293,7 +325,7 @@ class _AppointmentBookingFormState extends State<AppointmentBookingForm> {
             Text('Step 1: Choose Medical Specialty', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.getTextPrimary(isDark))),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: _specialty,
+              initialValue: _specialties.contains(_specialty) ? _specialty : _specialties.first,
               decoration: InputDecoration(
                 filled: true,
                 fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
@@ -338,7 +370,7 @@ class _AppointmentBookingFormState extends State<AppointmentBookingForm> {
                       setState(() => _selectedDoctor = doc);
                       _checkSlotAvailability();
                     },
-                    backgroundColor: isSel ? AppColors.primaryBlue.withOpacity(0.12) : null,
+                    backgroundColor: isSel ? AppColors.primaryBlue.withValues(alpha: 0.12) : null,
                     borderColor: isSel ? AppColors.primaryBlue : null,
                     child: Row(
                       children: [
@@ -463,7 +495,7 @@ class _AppointmentBookingFormState extends State<AppointmentBookingForm> {
 }
 
 class MyAppointmentsList extends StatefulWidget {
-  const MyAppointmentsList({Key? key}) : super(key: key);
+  const MyAppointmentsList({super.key});
 
   @override
   State<MyAppointmentsList> createState() => _MyAppointmentsListState();
@@ -534,8 +566,13 @@ class _MyAppointmentsListState extends State<MyAppointmentsList> {
                     children: [
                       CircleAvatar(
                         radius: 20,
-                        backgroundColor: AppColors.primaryBlue.withOpacity(0.12),
-                        child: Text(appt.doctorName.characters.first.toUpperCase(), style: const TextStyle(color: AppColors.primaryBlue, fontWeight: FontWeight.bold)),
+                        backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.12),
+                        child: Text(
+                          appt.doctorName.trim().isNotEmpty
+                              ? appt.doctorName.trim().characters.first.toUpperCase()
+                              : 'D',
+                          style: const TextStyle(color: AppColors.primaryBlue, fontWeight: FontWeight.bold),
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -556,16 +593,30 @@ class _MyAppointmentsListState extends State<MyAppointmentsList> {
                           ],
                         ),
                       ),
-                      if (appt.reportId.isNotEmpty)
-                        AppButton(
-                          label: 'View Report',
-                          icon: Icons.description_outlined,
-                          size: AppButtonSize.small,
-                          variant: AppButtonVariant.outline,
-                          onPressed: () {
-                            Navigator.pushNamed(context, '/report?id=${appt.reportId}');
-                          },
-                        ),
+                      Row(
+                        children: [
+                          if (appt.status.toLowerCase() == 'completed') ...[
+                            AppButton(
+                              label: 'View Consultation',
+                              icon: Icons.medical_information_outlined,
+                              size: AppButtonSize.small,
+                              variant: AppButtonVariant.primary,
+                              onPressed: () => _showConsultationResultModal(context, state, appt),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          if (appt.reportId.isNotEmpty)
+                            AppButton(
+                              label: 'View Report',
+                              icon: Icons.description_outlined,
+                              size: AppButtonSize.small,
+                              variant: AppButtonVariant.outline,
+                              onPressed: () {
+                                Navigator.pushNamed(context, '/report?id=${appt.reportId}');
+                              },
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -573,6 +624,60 @@ class _MyAppointmentsListState extends State<MyAppointmentsList> {
             },
           ),
       ],
+    );
+  }
+
+  void _showConsultationResultModal(BuildContext context, AppState state, AppointmentModel appt) async {
+    final consultation = await state.dbService.getConsultationByAppointmentId(appt.id);
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AppModal(
+        title: 'Doctor Consultation Summary',
+        icon: Icons.medical_information,
+        iconColor: AppColors.primaryTeal,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildInfoRow('Attending Doctor', 'Dr. ${consultation?.doctorName ?? appt.doctorName} (${consultation?.doctorSpecialty ?? appt.doctorSpecialty})'),
+            _buildInfoRow('Consultation Date', '${appt.preferredDateTime.day}/${appt.preferredDateTime.month}/${appt.preferredDateTime.year}'),
+            const Divider(height: 20),
+            _buildInfoRow('Clinical Assessment', consultation?.clinicalAssessment.isNotEmpty == true ? consultation!.clinicalAssessment : 'Clinical review completed.'),
+            if (consultation?.clinicalNotes.isNotEmpty == true)
+              _buildInfoRow('Doctor Notes', consultation!.clinicalNotes),
+            if (consultation?.recommendations.isNotEmpty == true)
+              _buildInfoRow('Recommendations', consultation!.recommendations),
+            if (consultation?.treatmentInstructions.isNotEmpty == true)
+              _buildInfoRow('Treatment & Medications', consultation!.treatmentInstructions),
+            if (consultation?.followUpRequired == true)
+              _buildInfoRow('Follow-up Plan', 'Follow-up recommended. ${consultation?.followUpNotes ?? ""}'),
+          ],
+        ),
+        actions: [
+          AppButton(
+            label: 'Close',
+            variant: AppButtonVariant.secondary,
+            size: AppButtonSize.small,
+            onPressed: () => Navigator.pop(ctx),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primaryTeal)),
+          const SizedBox(height: 2),
+          Text(value, style: const TextStyle(fontSize: 13)),
+        ],
+      ),
     );
   }
 }

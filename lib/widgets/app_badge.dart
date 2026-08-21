@@ -55,42 +55,50 @@ class AppBadge extends StatelessWidget {
 
     Color bg;
     Color fg;
+    Color border;
 
     switch (type) {
       case BadgeType.success:
-        bg = isDark ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5);
-        fg = isDark ? const Color(0xFFA7F3D0) : const Color(0xFF065F46);
+        bg = isDark ? const Color(0x3310B981) : const Color(0x2610B981);
+        fg = isDark ? const Color(0xFF34D399) : const Color(0xFF047857);
+        border = const Color(0xFF10B981).withValues(alpha: 0.35);
         break;
       case BadgeType.warning:
-        bg = isDark ? const Color(0xFF78350F) : const Color(0xFFFEF3C7);
-        fg = isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E);
+        bg = isDark ? const Color(0x33F59E0B) : const Color(0x26F59E0B);
+        fg = isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309);
+        border = const Color(0xFFF59E0B).withValues(alpha: 0.35);
         break;
       case BadgeType.danger:
-        bg = isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFEE2E2);
-        fg = isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B);
+        bg = isDark ? const Color(0x33EF4444) : const Color(0x26EF4444);
+        fg = isDark ? const Color(0xFFFCA5A5) : const Color(0xFFB91C1C);
+        border = const Color(0xFFEF4444).withValues(alpha: 0.35);
         break;
       case BadgeType.info:
-        bg = isDark ? const Color(0xFF1E3A8A) : const Color(0xFFDBEAFE);
-        fg = isDark ? const Color(0xFFBFDBFE) : const Color(0xFF1E40AF);
+        bg = isDark ? const Color(0x330EA5E9) : const Color(0x260EA5E9);
+        fg = isDark ? const Color(0xFF38BDF8) : const Color(0xFF0369A1);
+        border = const Color(0xFF0EA5E9).withValues(alpha: 0.35);
         break;
       case BadgeType.primary:
-        bg = isDark ? const Color(0xFF0F2C59) : const Color(0xFFE0F2FE);
+        bg = isDark ? const Color(0x3314B8A6) : const Color(0x260EA5E9);
         fg = isDark ? AppColors.primaryTeal : AppColors.primaryBlue;
+        border = (isDark ? AppColors.primaryTeal : AppColors.primaryBlue).withValues(alpha: 0.35);
         break;
       case BadgeType.neutral:
-        bg = isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
-        fg = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569);
+        bg = isDark ? const Color(0x3364748B) : const Color(0x2664748B);
+        fg = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155);
+        border = const Color(0xFF64748B).withValues(alpha: 0.25);
         break;
     }
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: isSmall ? 8 : 10,
-        vertical: isSmall ? 2 : 4,
+        horizontal: isSmall ? 8 : 12,
+        vertical: isSmall ? 3 : 5,
       ),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: border, width: 1.0),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -113,3 +121,4 @@ class AppBadge extends StatelessWidget {
     );
   }
 }
+

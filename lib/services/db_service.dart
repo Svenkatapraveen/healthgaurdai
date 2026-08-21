@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'auth_service.dart';
 
 class AssessmentModel {
   final String id;
@@ -188,14 +189,17 @@ class MedicineReminderModel {
 abstract class DatabaseService {
   Future<List<AssessmentModel>> getAssessments(String userId);
   Future<AssessmentModel?> getAssessmentById(String id);
+  Future<List<AssessmentModel>> getAllAssessmentsAdmin();
   Future<void> addAssessment(AssessmentModel assessment);
   
   Future<List<AppointmentModel>> getAppointments(String userId);
   Future<List<AppointmentModel>> getDoctorAppointments(String doctorId);
   Future<List<AppointmentModel>> getAllAppointmentsAdmin();
+  Future<List<AppUser>> getAllPatientsAdmin();
   Future<void> addAppointment(AppointmentModel appointment);
   Future<void> updateAppointmentStatus(String appointmentId, String status, {String? rejectionReason});
   Future<void> rescheduleAppointment(String appointmentId, DateTime newDateTime);
+  Future<void> deleteAppointment(String appointmentId);
 
   Future<ConsultationModel?> getConsultationByAppointmentId(String appointmentId);
   Future<List<ConsultationModel>> getDoctorConsultations(String doctorId);
@@ -203,6 +207,7 @@ abstract class DatabaseService {
   Future<void> completeConsultation(String consultationId, String appointmentId, String doctorId);
 
   Future<List<NotificationModel>> getNotifications(String userId);
+  Future<List<NotificationModel>> getAllNotificationsAdmin();
   Future<void> addNotification(NotificationModel notification);
 
   Future<List<MedicineReminderModel>> getReminders(String userId);
@@ -546,5 +551,25 @@ class MockDbService implements DatabaseService {
         isTaken: isTaken,
       );
     }
+  }
+
+  @override
+  Future<void> deleteAppointment(String appointmentId) async {
+    _appointments.removeWhere((a) => a.id == appointmentId);
+  }
+
+  @override
+  Future<List<AppUser>> getAllPatientsAdmin() async {
+    return [];
+  }
+
+  @override
+  Future<List<AssessmentModel>> getAllAssessmentsAdmin() async {
+    return List.from(_assessments);
+  }
+
+  @override
+  Future<List<NotificationModel>> getAllNotificationsAdmin() async {
+    return List.from(_notifications);
   }
 }

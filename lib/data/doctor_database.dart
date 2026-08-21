@@ -202,3 +202,13 @@ DoctorModel getDoctorById(String doctorId) {
     orElse: () => doctorDatabase.first,
   );
 }
+
+String normalizeSpecialty(String rawInput) {
+  final clean = rawInput.replaceAll(RegExp(r'^Dr\.\s*'), '').trim().toLowerCase();
+  for (var doc in doctorDatabase) {
+    if (doc.specialty.toLowerCase() == clean || clean.contains(doc.specialty.toLowerCase())) {
+      return doc.specialty;
+    }
+  }
+  return 'General Physician';
+}

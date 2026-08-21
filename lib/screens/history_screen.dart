@@ -4,7 +4,7 @@ import '../widgets/glass_card.dart';
 import '../state/app_state.dart';
 
 class HealthHistoryScreen extends StatefulWidget {
-  const HealthHistoryScreen({Key? key}) : super(key: key);
+  const HealthHistoryScreen({super.key});
 
   @override
   State<HealthHistoryScreen> createState() => _HealthHistoryScreenState();
@@ -84,7 +84,7 @@ class _HealthHistoryScreenState extends State<HealthHistoryScreen> {
                         child: ChoiceChip(
                           label: Text(filter, style: const TextStyle(fontSize: 12)),
                           selected: isSelected,
-                          selectedColor: AppColors.primaryTeal.withOpacity(0.25),
+                          selectedColor: AppColors.primaryTeal.withValues(alpha: 0.25),
                           onSelected: (val) {
                             if (val) setState(() => _selectedFilter = filter);
                           },
@@ -119,8 +119,9 @@ class _HealthHistoryScreenState extends State<HealthHistoryScreen> {
                       final asm = filteredAssessments[index];
                       
                       Color riskColor = AppColors.riskLow;
-                      if (asm.riskCategory.contains('Moderate')) riskColor = AppColors.riskModerate;
-                      else if (asm.riskCategory.contains('Critical')) riskColor = AppColors.riskCritical;
+                      if (asm.riskCategory.contains('Moderate')) {
+                        riskColor = AppColors.riskModerate;
+                      } else if (asm.riskCategory.contains('Critical')) riskColor = AppColors.riskCritical;
                       else if (asm.riskCategory.contains('High')) riskColor = AppColors.riskHigh;
 
                       return Container(

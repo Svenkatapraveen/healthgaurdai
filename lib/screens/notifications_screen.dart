@@ -9,7 +9,7 @@ import '../widgets/empty_state.dart';
 import '../state/app_state.dart';
 
 class NotificationsScreen extends StatelessWidget {
-  const NotificationsScreen({Key? key}) : super(key: key);
+  const NotificationsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -17,17 +17,8 @@ class NotificationsScreen extends StatelessWidget {
     final state = AppStateProvider.of(context);
     final notifications = state.notifications;
 
-    final role = state.currentUser?.isAdmin == true
-        ? UserRole.admin
-        : state.currentDoctor != null
-            ? UserRole.doctor
-            : UserRole.patient;
-
-    final backTarget = role == UserRole.admin
-        ? '/admin-dashboard'
-        : role == UserRole.doctor
-            ? '/doctor-dashboard'
-            : '/dashboard';
+    final role = state.currentUser?.isAdmin == true ? UserRole.admin : UserRole.patient;
+    final backTarget = role == UserRole.admin ? '/admin-dashboard' : '/dashboard';
 
     return AppLayout(
       title: 'Notifications Hub',
@@ -96,7 +87,7 @@ class NotificationsScreen extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: categoryColor.withOpacity(0.12),
+                                color: categoryColor.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(categoryIcon, color: categoryColor, size: 20),

@@ -4,7 +4,7 @@ import '../widgets/glass_card.dart';
 import '../state/app_state.dart';
 
 class MedicineReminderScreen extends StatefulWidget {
-  const MedicineReminderScreen({Key? key}) : super(key: key);
+  const MedicineReminderScreen({super.key});
 
   @override
   State<MedicineReminderScreen> createState() => _MedicineReminderScreenState();
@@ -109,7 +109,7 @@ class _MedicineReminderScreenState extends State<MedicineReminderScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: _frequency,
+                            initialValue: _frequency,
                             items: _frequencies.map((f) {
                               return DropdownMenuItem(value: f, child: Text(f, style: const TextStyle(fontSize: 12)));
                             }).toList(),
@@ -185,7 +185,7 @@ class _MedicineReminderScreenState extends State<MedicineReminderScreen> {
                       color: isDark ? AppColors.darkSurface : Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.15),
+                        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.15),
                       ),
                     ),
                     child: Row(

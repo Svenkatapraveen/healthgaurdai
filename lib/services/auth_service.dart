@@ -7,11 +7,13 @@ class AppUser {
   final String mobileNumber;
   final int age;
   final String gender;
-  final bool isAdmin;
+  final String role;
   final bool isEmailVerified;
   final String? profilePic;
+  final DateTime? createdAt;
 
   String get name => fullName;
+  bool get isAdmin => role.toLowerCase() == 'admin';
 
   AppUser({
     required this.uid,
@@ -20,10 +22,12 @@ class AppUser {
     required this.mobileNumber,
     required this.age,
     required this.gender,
-    this.isAdmin = false,
+    String? role,
+    bool isAdmin = false,
     this.isEmailVerified = false,
     this.profilePic,
-  });
+    this.createdAt,
+  }) : role = role ?? (isAdmin ? 'admin' : 'patient');
 
   AppUser copyWith({
     String? fullName,
@@ -31,8 +35,10 @@ class AppUser {
     String? mobileNumber,
     int? age,
     String? gender,
+    String? role,
     bool? isEmailVerified,
     String? profilePic,
+    DateTime? createdAt,
   }) {
     return AppUser(
       uid: uid,
@@ -41,9 +47,10 @@ class AppUser {
       mobileNumber: mobileNumber ?? this.mobileNumber,
       age: age ?? this.age,
       gender: gender ?? this.gender,
-      isAdmin: isAdmin,
+      role: role ?? this.role,
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,
       profilePic: profilePic ?? this.profilePic,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 }

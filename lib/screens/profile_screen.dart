@@ -10,7 +10,7 @@ import '../widgets/app_text_field.dart';
 import '../state/app_state.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  const ProfileScreen({super.key});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -68,7 +68,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const Text('Gender', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<String>(
-                          value: selectedGender,
+                          initialValue: selectedGender,
                           decoration: InputDecoration(
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
@@ -134,16 +134,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final state = AppStateProvider.of(context);
     final user = state.currentUser;
-    final doctor = state.currentDoctor;
-
-    final role = user?.isAdmin == true
-        ? UserRole.admin
-        : doctor != null
-            ? UserRole.doctor
-            : UserRole.patient;
-
-    final name = doctor?.name ?? user?.name ?? 'User Account';
-    final email = doctor?.email ?? user?.email ?? 'user@healthguard.ai';
+    final role = user?.isAdmin == true ? UserRole.admin : UserRole.patient;
+    final name = user?.name ?? 'User Account';
+    final email = user?.email ?? 'user@healthguard.ai';
 
     return AppLayout(
       title: 'User Profile & Settings',
@@ -161,11 +154,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 variant: AppButtonVariant.secondary,
                 size: AppButtonSize.small,
                 onPressed: () {
-                  final backTarget = role == UserRole.admin
-                      ? '/admin-dashboard'
-                      : role == UserRole.doctor
-                          ? '/doctor-dashboard'
-                          : '/dashboard';
+                  final backTarget = role == UserRole.admin ? '/admin-dashboard' : '/dashboard';
                   if (Navigator.canPop(context)) {
                     Navigator.pop(context);
                   } else {
@@ -186,7 +175,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   radius: 32,
                   backgroundColor: AppColors.primaryTeal,
                   child: Text(
-                    name.isNotEmpty ? name.characters.first.toUpperCase() : 'U',
+                    name.trim().isNotEmpty ? name.trim().characters.first.toUpperCase() : 'U',
                     style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                 ),
@@ -197,13 +186,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
                       const SizedBox(height: 2),
-                      Text(email, style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.8))),
+                      Text(email, style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.8))),
                       const SizedBox(height: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(color: AppColors.primaryTeal, borderRadius: BorderRadius.circular(6)),
                         child: Text(
-                          role == UserRole.admin ? 'Administrator' : role == UserRole.doctor ? 'Physician Specialist' : 'Patient',
+                          role == UserRole.admin ? 'Administrator' : 'Patient',
                           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
                       ),
@@ -223,7 +212,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   title: 'Total Assessments',
                   value: '${state.assessments.length}',
                   icon: Icons.assignment_outlined,
-                  iconBgColor: AppColors.primaryBlue.withOpacity(0.12),
+                  iconBgColor: AppColors.primaryBlue.withValues(alpha: 0.12),
                   iconColor: AppColors.primaryBlue,
                 ),
               ),
@@ -233,7 +222,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   title: 'Total Appointments',
                   value: '${state.appointments.length}',
                   icon: Icons.calendar_month_outlined,
-                  iconBgColor: AppColors.primaryTeal.withOpacity(0.15),
+                  iconBgColor: AppColors.primaryTeal.withValues(alpha: 0.15),
                   iconColor: AppColors.primaryTeal,
                 ),
               ),

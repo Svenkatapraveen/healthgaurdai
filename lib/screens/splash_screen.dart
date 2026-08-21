@@ -4,7 +4,7 @@ import '../theme/colors.dart';
 import '../state/app_state.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -38,9 +38,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       if (!mounted) return;
       final state = AppStateProvider.of(context);
       if (state.currentUser != null) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/dashboard', (route) => false);
+        if (state.currentUser!.isAdmin || state.currentUser!.role == 'admin') {
+          Navigator.of(context).pushNamedAndRemoveUntil('/admin-dashboard', (route) => false);
+        } else {
+          Navigator.of(context).pushNamedAndRemoveUntil('/dashboard', (route) => false);
+        }
       } else {
-        Navigator.of(context).pushReplacementNamed('/welcome');
+        Navigator.of(context).pushReplacementNamed('/auth');
       }
     });
   }
@@ -69,7 +73,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primaryTeal.withOpacity(isDark ? 0.15 : 0.1),
+                color: AppColors.primaryTeal.withValues(alpha: isDark ? 0.15 : 0.1),
               ),
             ),
           ),
@@ -81,7 +85,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primaryBlue.withOpacity(isDark ? 0.2 : 0.1),
+                color: AppColors.primaryBlue.withValues(alpha: isDark ? 0.2 : 0.1),
               ),
             ),
           ),
@@ -104,10 +108,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   child: Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: AppColors.primaryTeal.withOpacity(0.12),
+                      color: AppColors.primaryTeal.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: AppColors.primaryTeal.withOpacity(0.3),
+                        color: AppColors.primaryTeal.withValues(alpha: 0.3),
                         width: 2,
                       ),
                     ),
@@ -163,7 +167,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 SizedBox(
                   width: 50,
                   child: LinearProgressIndicator(
-                    backgroundColor: AppColors.primaryTeal.withOpacity(0.2),
+                    backgroundColor: AppColors.primaryTeal.withValues(alpha: 0.2),
                     color: AppColors.primaryTeal,
                     borderRadius: BorderRadius.circular(10),
                   ),

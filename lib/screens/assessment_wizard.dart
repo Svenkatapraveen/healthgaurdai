@@ -10,7 +10,7 @@ import '../data/symptom_database.dart';
 
 class AssessmentWizard extends StatefulWidget {
   final bool isNested;
-  const AssessmentWizard({Key? key, this.isNested = false}) : super(key: key);
+  const AssessmentWizard({super.key, this.isNested = false});
 
   @override
   State<AssessmentWizard> createState() => _AssessmentWizardState();
@@ -18,6 +18,15 @@ class AssessmentWizard extends StatefulWidget {
 
 class _AssessmentWizardState extends State<AssessmentWizard> {
   int _currentStep = 1;
+
+  final TextEditingController _fullNameCtrl = TextEditingController();
+  final TextEditingController _ageCtrl = TextEditingController(text: '28');
+  final TextEditingController _heightCtrl = TextEditingController(text: '172 cm');
+  final TextEditingController _weightCtrl = TextEditingController(text: '68 kg');
+  final TextEditingController _allergiesCtrl = TextEditingController(text: 'None');
+  final TextEditingController _medicationsCtrl = TextEditingController(text: 'None');
+  String _patientGender = 'Male';
+  bool _profileInitialized = false;
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -28,15 +37,15 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
   final Map<String, Map<String, String>> _followUpAnswers = {};
   double _severity = 5.0;
   final String _painLocation = 'Center';
-  String _duration = 'Days';
-  String _pattern = 'Intermittent';
+  final String _duration = 'Days';
+  final String _pattern = 'Intermittent';
 
   final Set<String> _selectedHistory = {};
   String _smoking = 'Never';
-  String _alcohol = 'Rarely';
-  String _exercise = '1-2 times/week';
-  double _sleepHours = 7.0;
-  double _waterLiters = 2.0;
+  final String _alcohol = 'Rarely';
+  final String _exercise = '1-2 times/week';
+  final double _sleepHours = 7.0;
+  final double _waterLiters = 2.0;
   String _stressLevel = 'Moderate';
 
   final List<String> _historyOptions = [
@@ -59,27 +68,60 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_profileInitialized) {
+      final state = AppStateProvider.of(context);
+      final user = state.currentUser;
+      if (user != null) {
+        _fullNameCtrl.text = user.fullName;
+        if (user.age > 0) _ageCtrl.text = '${user.age}';
+        if (user.gender.isNotEmpty) _patientGender = user.gender;
+        if (state.assessments.isNotEmpty) {
+          for (var cond in state.assessments.first.medicalHistory) {
+            _selectedHistory.add(cond);
+          }
+        }
+      }
+      _profileInitialized = true;
+    }
+  }
+
+  @override
   void dispose() {
+    _fullNameCtrl.dispose();
+    _ageCtrl.dispose();
+    _heightCtrl.dispose();
+    _weightCtrl.dispose();
+    _allergiesCtrl.dispose();
+    _medicationsCtrl.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
   void _nextStep() {
-    if (_selectedPrimary.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select or search at least one symptom.')),
-      );
-      return;
-    }
-
     if (_currentStep == 1) {
+      if (_fullNameCtrl.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter your full name.')),
+        );
+        return;
+      }
+      setState(() => _currentStep = 2);
+    } else if (_currentStep == 2) {
+      if (_selectedPrimary.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select or search at least one symptom.')),
+        );
+        return;
+      }
       for (var s in _selectedPrimary) {
         if (!_followUpAnswers.containsKey(s)) {
           _followUpAnswers[s] = {};
         }
       }
-      setState(() => _currentStep = 2);
-    } else if (_currentStep == 2) {
+      setState(() => _currentStep = 3);
+    } else if (_currentStep == 3) {
       bool allAnswered = true;
       for (var s in _selectedPrimary) {
         final dbSymptom = symptomDatabase.firstWhere(
@@ -100,7 +142,7 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
         );
         return;
       }
-      setState(() => _currentStep = 3);
+      setState(() => _currentStep = 4);
     }
   }
 
@@ -173,53 +215,72 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
       urgency = 'Regular';
     }
 
-    String recommendedDoctor = 'General Practitioner';
+    String recommendedDoctor = 'General Medicine';
     List<String> possibleCauses = [];
     List<String> recommendations = [];
     Map<String, double> diseaseProbability = {
-      'Influenza / Viral Fever': 15.0,
-      'Migraine Tension': 10.0,
-      'Gastroesophageal Reflux': 10.0,
-      'Cardiac Strain / Angina': 5.0,
-      'Asthma / Bronchial spasm': 5.0,
+      'General Consultation': 20.0,
     };
 
     for (var sName in _selectedPrimary) {
       final dbSymptom = symptomDatabase.firstWhere(
-        (element) => element.name == sName,
+        (element) => element.name.toLowerCase() == sName.toLowerCase(),
         orElse: () => const MedicalSymptom(name: '', category: '', bodyLocations: []),
       );
-      final cat = dbSymptom.category;
+      final cat = dbSymptom.category.toLowerCase();
+      final lowerName = sName.toLowerCase();
 
-      if (cat.contains('Heart') || cat.contains('Circulatory') || sName.contains('Chest Pain') || sName.contains('Palpitations')) {
-        recommendedDoctor = 'Cardiologist';
-        possibleCauses.addAll(['Angina Pectoris', 'Myocardial Strain', 'Acid Reflux / GERD']);
+      if (cat.contains('heart') || cat.contains('circulatory') || lowerName.contains('chest pain') || lowerName.contains('palpitations') || lowerName.contains('heartbeat')) {
+        recommendedDoctor = 'Cardiology';
+        possibleCauses.addAll(['Angina Pectoris', 'Myocardial Strain', 'Cardiovascular Evaluation']);
         recommendations.addAll(['Rest immediately in an upright position', 'Schedule an ECG & cardiac enzyme evaluation', 'Avoid caffeine and tobacco']);
-        diseaseProbability['Cardiac Strain / Angina'] = 75.0;
-      } else if (cat.contains('Neurological') || sName.contains('Headache') || sName.contains('Migraine') || sName.contains('Dizziness')) {
-        recommendedDoctor = 'Neurologist';
-        possibleCauses.addAll(['Migraine Episode', 'Tension Headache', 'Vertigo / Vestibular Strain']);
+        diseaseProbability['Cardiovascular Condition'] = 80.0;
+      } else if (cat.contains('neurolog') || lowerName.contains('headache') || lowerName.contains('migraine') || lowerName.contains('dizziness') || lowerName.contains('seizure') || lowerName.contains('numbness') || lowerName.contains('weakness') || lowerName.contains('memory')) {
+        recommendedDoctor = 'Neurology';
+        possibleCauses.addAll(['Migraine Episode', 'Tension Headache', 'Neurological Evaluation', 'Vertigo / Vestibular Strain']);
         recommendations.addAll(['Rest in a dark, quiet room with cold compress', 'Maintain a symptom diary', 'Ensure consistent hydration']);
-        diseaseProbability['Migraine Tension'] = 80.0;
-      } else if (cat.contains('Respiratory') || cat.contains('Lung') || sName.contains('Cough') || sName.contains('Breath')) {
-        recommendedDoctor = 'Pulmonologist';
+        diseaseProbability['Neurological Condition'] = 85.0;
+      } else if (cat.contains('skin') || cat.contains('dermat') || lowerName.contains('rash') || lowerName.contains('itching') || lowerName.contains('acne') || lowerName.contains('lesion') || lowerName.contains('discoloration')) {
+        recommendedDoctor = 'Dermatology';
+        possibleCauses.addAll(['Allergic Dermatitis', 'Eczema Flare-up', 'Skin Lesion']);
+        recommendations.addAll(['Avoid scratching affected skin area', 'Apply soothing hypoallergenic moisturizer', 'Keep skin clean and dry']);
+        diseaseProbability['Dermatological Condition'] = 75.0;
+      } else if (cat.contains('respirat') || cat.contains('lung') || lowerName.contains('cough') || lowerName.contains('breathing') || lowerName.contains('shortness of breath')) {
+        recommendedDoctor = 'Pulmonology';
         possibleCauses.addAll(['Acute Bronchitis', 'Asthma Flare-up', 'Upper Respiratory Infection']);
-        recommendations.addAll(['Avoid cold environments', 'Inhale steam or use humidifier', 'Monitor peak flow reading']);
-        diseaseProbability['Asthma / Bronchial spasm'] = 70.0;
-      } else if (cat.contains('Digestive') || cat.contains('Abdominal') || sName.contains('Stomach')) {
-        recommendedDoctor = 'Gastroenterologist';
-        possibleCauses.addAll(['Gastritis', 'Gastroenteritis', 'Irritable Bowel Syndrome']);
+        recommendations.addAll(['Avoid cold environments and dust', 'Inhale steam or use humidifier', 'Monitor peak flow reading']);
+        diseaseProbability['Pulmonary / Respiratory Condition'] = 75.0;
+      } else if (cat.contains('digest') || cat.contains('abdomin') || lowerName.contains('stomach') || lowerName.contains('vomiting') || lowerName.contains('diarrhea') || lowerName.contains('constipation') || lowerName.contains('reflux')) {
+        recommendedDoctor = 'Gastroenterology';
+        possibleCauses.addAll(['Gastritis', 'Gastroenteritis', 'Acid Reflux / GERD', 'Irritable Bowel Syndrome']);
         recommendations.addAll(['Eat small bland meals', 'Avoid spicy or greasy foods', 'Stay hydrated with electrolytes']);
-        diseaseProbability['Gastroesophageal Reflux'] = 65.0;
+        diseaseProbability['Gastrointestinal Condition'] = 70.0;
+      } else if (cat.contains('ortho') || cat.contains('joint') || cat.contains('bone') || lowerName.contains('joint pain') || lowerName.contains('back pain') || lowerName.contains('muscle') || lowerName.contains('fracture')) {
+        recommendedDoctor = 'Orthopedics';
+        possibleCauses.addAll(['Musculoskeletal Strain', 'Joint Inflammation', 'Spinal / Back Pain']);
+        recommendations.addAll(['Apply ice/heat packs to painful joints', 'Avoid heavy lifting or strenuous exercise', 'Ensure ergonomic posture']);
+        diseaseProbability['Orthopedic / Musculoskeletal Strain'] = 75.0;
+      } else if (cat.contains('ent') || lowerName.contains('ear') || lowerName.contains('hearing') || lowerName.contains('sinus') || lowerName.contains('throat') || lowerName.contains('nasal')) {
+        recommendedDoctor = 'ENT';
+        possibleCauses.addAll(['Sinusitis', 'Otitis / Ear Infection', 'Pharyngitis']);
+        recommendations.addAll(['Perform warm saline gargles', 'Use nasal saline spray', 'Avoid loud noise exposure']);
+        diseaseProbability['ENT Condition'] = 70.0;
+      } else if (cat.contains('eye') || cat.contains('ophthal') || lowerName.contains('vision') || lowerName.contains('eye pain') || lowerName.contains('red eye')) {
+        recommendedDoctor = 'Ophthalmology';
+        possibleCauses.addAll(['Conjunctivitis', 'Ocular Strain', 'Dry Eye Syndrome']);
+        recommendations.addAll(['Rest eyes from screen illumination', 'Avoid rubbing eyes', 'Use lubricating eye drops']);
+        diseaseProbability['Ophthalmological Condition'] = 75.0;
       }
     }
 
     if (possibleCauses.isEmpty) {
-      possibleCauses.addAll(['General Fatigue Syndrome', 'Mild Viral Infection', 'Dehydration Headache']);
-      recommendations.addAll(['Get 8 hours of restorative sleep', 'Increase daily water intake to 2.5L', 'Schedule light stretching']);
+      recommendedDoctor = 'General Medicine';
+      possibleCauses.addAll(['General Fatigue Syndrome', 'Mild Viral Symptoms', 'General Health Evaluation']);
+      recommendations.addAll(['Get 8 hours of restorative sleep', 'Increase daily water intake to 2.5L', 'Schedule routine health checkup']);
     }
 
-    String clinicalSummary = 'Patient logged symptoms: ${_selectedPrimary.join(", ")}. ';
+    String clinicalSummary = 'This assessment indicates a possible risk and is not a medical diagnosis. Please consult a qualified healthcare professional. ';
+    clinicalSummary += 'Patient logged symptoms: ${_selectedPrimary.join(", ")}. ';
     clinicalSummary += 'Overall severity index is $_severity/10 for duration of $_duration in an $_pattern pattern. ';
     if (_selectedHistory.isNotEmpty) {
       clinicalSummary += 'Co-morbid history: ${_selectedHistory.join(", ")}. ';
@@ -294,77 +355,93 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final state = AppStateProvider.of(context);
 
+    Widget content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Step Header Bar
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.getSurface(isDark),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.getBorder(isDark)),
+          ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                if (!widget.isNested)
+                  IconButton(
+                    icon: Icon(Icons.arrow_back, color: AppColors.getTextPrimary(isDark)),
+                    tooltip: 'Back',
+                    onPressed: () {
+                      if (_currentStep > 1) {
+                        _prevStep();
+                      } else if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      } else {
+                        Navigator.pushReplacementNamed(context, '/dashboard');
+                      }
+                    },
+                  ),
+                if (!widget.isNested) const SizedBox(width: 8),
+                _buildStepPill(1, '1. Patient Info'),
+                const SizedBox(width: 8),
+                _buildStepPill(2, '2. Select Symptoms'),
+                const SizedBox(width: 8),
+                _buildStepPill(3, '3. Symptom Details'),
+                const SizedBox(width: 8),
+                _buildStepPill(4, '4. Medical History & Habits'),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        _buildStepContent(isDark),
+        const SizedBox(height: 20),
+
+        // Bottom Action Bar
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.getSurface(isDark),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.getBorder(isDark)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (_currentStep > 1)
+                AppButton(
+                  label: 'Previous Step',
+                  variant: AppButtonVariant.secondary,
+                  onPressed: _prevStep,
+                )
+              else
+                const SizedBox.shrink(),
+              AppButton(
+                label: _currentStep < 4 ? 'Continue' : 'Analyze Symptoms',
+                icon: _currentStep < 4 ? Icons.arrow_forward : Icons.science_outlined,
+                isLoading: state.isLoading,
+                onPressed: _currentStep < 4 ? _nextStep : (state.isLoading ? null : _submit),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    if (widget.isNested) {
+      return content;
+    }
+
     return Scaffold(
       backgroundColor: AppColors.getBg(isDark),
-      body: Column(
-        children: [
-          // Step Header Bar
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.getSurface(isDark),
-              border: Border(bottom: BorderSide(color: AppColors.getBorder(isDark))),
-            ),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: Icon(Icons.arrow_back, color: AppColors.getTextPrimary(isDark)),
-                  tooltip: 'Back',
-                  onPressed: () {
-                    if (_currentStep > 1) {
-                      _prevStep();
-                    } else if (Navigator.canPop(context)) {
-                      Navigator.pop(context);
-                    } else {
-                      Navigator.pushReplacementNamed(context, '/dashboard');
-                    }
-                  },
-                ),
-                const SizedBox(width: 8),
-                _buildStepPill(1, '1. Select Symptoms'),
-                const SizedBox(width: 12),
-                _buildStepPill(2, '2. Follow-Up Questions'),
-                const SizedBox(width: 12),
-                _buildStepPill(3, '3. Medical History & Lifestyle'),
-              ],
-            ),
-          ),
-
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: _buildStepContent(isDark),
-            ),
-          ),
-
-          // Bottom Action Bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            decoration: BoxDecoration(
-              color: AppColors.getSurface(isDark),
-              border: Border(top: BorderSide(color: AppColors.getBorder(isDark))),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                if (_currentStep > 1)
-                  AppButton(
-                    label: 'Back',
-                    variant: AppButtonVariant.secondary,
-                    onPressed: _prevStep,
-                  )
-                else
-                  const SizedBox(),
-                AppButton(
-                  label: _currentStep < 3 ? 'Continue' : 'Analyze Symptoms',
-                  icon: _currentStep < 3 ? Icons.arrow_forward : Icons.science_outlined,
-                  isLoading: state.isLoading,
-                  onPressed: _currentStep < 3 ? _nextStep : (state.isLoading ? null : _submit),
-                ),
-              ],
-            ),
-          ),
-        ],
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: content,
       ),
     );
   }
@@ -374,31 +451,29 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
     final bool isActive = _currentStep == stepNum;
     final bool isDone = _currentStep > stepNum;
 
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-        decoration: BoxDecoration(
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      decoration: BoxDecoration(
+        color: isActive
+            ? AppColors.primaryBlue
+            : isDone
+                ? AppColors.primaryTeal.withValues(alpha: 0.15)
+                : (isDark ? AppColors.darkSurface : const Color(0xFFF1F5F9)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        title,
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
           color: isActive
-              ? AppColors.primaryBlue
+              ? Colors.white
               : isDone
-                  ? AppColors.primaryTeal.withOpacity(0.15)
-                  : (isDark ? AppColors.darkSurface : const Color(0xFFF1F5F9)),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          title,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: isActive
-                ? Colors.white
-                : isDone
-                    ? AppColors.primaryTeal
-                    : AppColors.getTextSecondary(isDark),
-          ),
+                  ? AppColors.primaryTeal
+                  : AppColors.getTextSecondary(isDark),
         ),
       ),
     );
@@ -407,13 +482,121 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
   Widget _buildStepContent(bool isDark) {
     switch (_currentStep) {
       case 1:
-        return _buildStep1Symptoms(isDark);
+        return _buildStep0PatientInfo(isDark);
       case 2:
-        return _buildStep2FollowUp(isDark);
+        return _buildStep1Symptoms(isDark);
       case 3:
+        return _buildStep2FollowUp(isDark);
+      case 4:
       default:
         return _buildStep3Lifestyle(isDark);
     }
+  }
+
+  Widget _buildStep0PatientInfo(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Patient Intake Profile', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.getTextPrimary(isDark))),
+        const SizedBox(height: 4),
+        Text('Review baseline patient parameters automatically pre-filled from your profile.', style: TextStyle(fontSize: 13, color: AppColors.getTextSecondary(isDark))),
+        const SizedBox(height: 20),
+
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.account_circle_outlined, color: AppColors.primaryTeal, size: 22),
+                  const SizedBox(width: 8),
+                  Text('Personal & Physical Metrics', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.getTextPrimary(isDark))),
+                ],
+              ),
+              const Divider(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: AppTextField(
+                      label: 'Full Name',
+                      controller: _fullNameCtrl,
+                      prefixIcon: Icons.person_outline,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 1,
+                    child: AppTextField(
+                      label: 'Age',
+                      controller: _ageCtrl,
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Gender', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.getTextPrimary(isDark))),
+                        const SizedBox(height: 6),
+                        DropdownButtonFormField<String>(
+                          initialValue: _patientGender,
+                          decoration: InputDecoration(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            filled: true,
+                            fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                          ),
+                          items: ['Male', 'Female', 'Other'].map((g) => DropdownMenuItem(value: g, child: Text(g, style: const TextStyle(fontSize: 12)))).toList(),
+                          onChanged: (v) {
+                            if (v != null) setState(() => _patientGender = v);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppTextField(
+                      label: 'Height',
+                      controller: _heightCtrl,
+                      prefixIcon: Icons.height,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppTextField(
+                      label: 'Weight',
+                      controller: _weightCtrl,
+                      prefixIcon: Icons.monitor_weight_outlined,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              AppTextField(
+                label: 'Known Allergies',
+                controller: _allergiesCtrl,
+                prefixIcon: Icons.warning_amber_outlined,
+                hint: 'e.g. Penicillin, Peanuts, Dust',
+              ),
+              const SizedBox(height: 16),
+              AppTextField(
+                label: 'Current Medications',
+                controller: _medicationsCtrl,
+                prefixIcon: Icons.medication_outlined,
+                hint: 'e.g. Aspirin 75mg, Insulin',
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   String _mapAreaToLocation(String area) {
@@ -464,9 +647,9 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.primaryTeal.withOpacity(0.08),
+              color: AppColors.primaryTeal.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.primaryTeal.withOpacity(0.2)),
+              border: Border.all(color: AppColors.primaryTeal.withValues(alpha: 0.2)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -618,7 +801,7 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
                     }
                   });
                 },
-                backgroundColor: isSel ? AppColors.primaryBlue.withOpacity(0.12) : null,
+                backgroundColor: isSel ? AppColors.primaryBlue.withValues(alpha: 0.12) : null,
                 borderColor: isSel ? AppColors.primaryBlue : null,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 child: Row(
@@ -833,7 +1016,7 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
                         Text('Smoking', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.getTextPrimary(isDark))),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<String>(
-                          value: _smoking,
+                          initialValue: _smoking,
                           decoration: InputDecoration(filled: true, fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface, contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
                           items: ['Never', 'Occasionally', 'Daily'].map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 12)))).toList(),
                           onChanged: (val) => setState(() => _smoking = val ?? 'Never'),
@@ -849,7 +1032,7 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
                         Text('Stress Level', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.getTextPrimary(isDark))),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<String>(
-                          value: _stressLevel,
+                          initialValue: _stressLevel,
                           decoration: InputDecoration(filled: true, fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface, contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
                           items: ['Low', 'Moderate', 'High'].map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 12)))).toList(),
                           onChanged: (val) => setState(() => _stressLevel = val ?? 'Moderate'),

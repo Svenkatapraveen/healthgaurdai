@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'db_service.dart';
+import 'auth_service.dart';
 
 class FirebaseDbService implements DatabaseService {
   static final FirebaseDbService _instance = FirebaseDbService._internal();
@@ -8,6 +9,81 @@ class FirebaseDbService implements DatabaseService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  AssessmentModel _mapToAssessment(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? {};
+    DateTime parseDate(dynamic val) {
+      if (val is Timestamp) return val.toDate();
+      if (val is String) {
+        try {
+          return DateTime.parse(val);
+        } catch (_) {}
+      }
+      return DateTime.now();
+    }
+
+    return AssessmentModel(
+      id: data['id'] ?? doc.id,
+      userId: data['userId'] ?? data['patientId'] ?? '',
+      date: parseDate(data['date'] ?? data['createdAt']),
+      primarySymptoms: List<String>.from(data['primarySymptoms'] ?? []),
+      details: Map<String, dynamic>.from(data['details'] ?? {}),
+      associatedSymptoms: List<String>.from(data['associatedSymptoms'] ?? []),
+      medicalHistory: List<String>.from(data['medicalHistory'] ?? []),
+      lifestyle: Map<String, dynamic>.from(data['lifestyle'] ?? {}),
+      overallRiskScore: (data['overallRiskScore'] is num) ? (data['overallRiskScore'] as num).toDouble() : 0.0,
+      riskCategory: data['riskCategory'] ?? 'Unknown',
+      diseaseProbability: Map<String, double>.from(
+          (data['diseaseProbability'] as Map?)?.map((key, value) => MapEntry(key.toString(), (value as num).toDouble())) ?? {}),
+      clinicalSummary: data['clinicalSummary'] ?? '',
+      possibleCauses: List<String>.from(data['possibleCauses'] ?? []),
+      recommendations: List<String>.from(data['recommendations'] ?? []),
+      preventiveActions: List<String>.from(data['preventiveActions'] ?? []),
+      urgencyLevel: data['urgencyLevel'] ?? 'Regular',
+    );
+  }
+
+  AppUser _mapToUser(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? {};
+    DateTime? createdAt;
+    if (data['createdAt'] is Timestamp) {
+      createdAt = (data['createdAt'] as Timestamp).toDate();
+    }
+    return AppUser(
+      uid: data['uid'] ?? doc.id,
+      fullName: data['fullName'] ?? data['name'] ?? 'Patient',
+      email: data['email'] ?? '',
+      mobileNumber: data['mobileNumber'] ?? data['mobile'] ?? '',
+      age: (data['age'] is num) ? (data['age'] as num).toInt() : 0,
+      gender: data['gender'] ?? 'Other',
+      role: data['role']?.toString() ?? (data['isAdmin'] == true ? 'admin' : 'patient'),
+      isAdmin: data['isAdmin'] == true,
+      profilePic: data['profilePic'],
+      createdAt: createdAt,
+    );
+  }
+
+  NotificationModel _mapToNotification(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? {};
+    DateTime parseDate(dynamic val) {
+      if (val is Timestamp) return val.toDate();
+      if (val is String) {
+        try {
+          return DateTime.parse(val);
+        } catch (_) {}
+      }
+      return DateTime.now();
+    }
+
+    return NotificationModel(
+      id: data['id'] ?? doc.id,
+      userId: data['userId'] ?? '',
+      title: data['title'] ?? '',
+      body: data['body'] ?? '',
+      timestamp: parseDate(data['timestamp'] ?? data['createdAt']),
+      category: data['category'] ?? 'Appointment',
+    );
+  }
+
   @override
   Future<List<AssessmentModel>> getAssessments(String userId) async {
     final query = await _firestore
@@ -15,31 +91,60 @@ class FirebaseDbService implements DatabaseService {
         .where('userId', isEqualTo: userId)
         .get();
 
-    final assessments = query.docs.map((doc) {
-      final data = doc.data();
-      return AssessmentModel(
-        id: data['id'] ?? doc.id,
-        userId: data['userId'],
-        date: (data['date'] as Timestamp).toDate(),
-        primarySymptoms: List<String>.from(data['primarySymptoms'] ?? []),
-        details: Map<String, dynamic>.from(data['details'] ?? {}),
-        associatedSymptoms: List<String>.from(data['associatedSymptoms'] ?? []),
-        medicalHistory: List<String>.from(data['medicalHistory'] ?? []),
-        lifestyle: Map<String, dynamic>.from(data['lifestyle'] ?? {}),
-        overallRiskScore: (data['overallRiskScore'] ?? 0).toDouble(),
-        riskCategory: data['riskCategory'] ?? 'Unknown',
-        diseaseProbability: Map<String, double>.from(
-            (data['diseaseProbability'] as Map?)?.map((key, value) => MapEntry(key.toString(), (value as num).toDouble())) ?? {}),
-        clinicalSummary: data['clinicalSummary'] ?? '',
-        possibleCauses: List<String>.from(data['possibleCauses'] ?? []),
-        recommendations: List<String>.from(data['recommendations'] ?? []),
-        preventiveActions: List<String>.from(data['preventiveActions'] ?? []),
-        urgencyLevel: data['urgencyLevel'] ?? 'Regular',
-      );
-    }).toList();
-
+    final assessments = query.docs.map((doc) => _mapToAssessment(doc)).toList();
     assessments.sort((a, b) => b.date.compareTo(a.date));
     return assessments;
+  }
+
+  @override
+  Future<List<AssessmentModel>> getAllAssessmentsAdmin() async {
+    try {
+      final query = await _firestore.collection('assessments').get();
+      final list = query.docs.map((doc) => _mapToAssessment(doc)).toList();
+      list.sort((a, b) => b.date.compareTo(a.date));
+      return list;
+    } catch (e) {
+      print('Error fetching admin assessments: $e');
+      return [];
+    }
+  }
+
+  Stream<List<AssessmentModel>> streamAllAssessmentsAdmin() {
+    return _firestore
+        .collection('assessments')
+        .snapshots()
+        .map((snapshot) {
+          final list = snapshot.docs.map((doc) => _mapToAssessment(doc)).toList();
+          list.sort((a, b) => b.date.compareTo(a.date));
+          return list;
+        });
+  }
+
+  @override
+  Future<List<AppUser>> getAllPatientsAdmin() async {
+    try {
+      final query = await _firestore.collection('users').get();
+      final users = query.docs
+          .map((doc) => _mapToUser(doc))
+          .where((u) => !u.isAdmin && u.role.toLowerCase() != 'admin')
+          .toList();
+      return users;
+    } catch (e) {
+      print('Error fetching admin patients: $e');
+      return [];
+    }
+  }
+
+  Stream<List<AppUser>> streamAllPatientsAdmin() {
+    return _firestore
+        .collection('users')
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs
+              .map((doc) => _mapToUser(doc))
+              .where((u) => !u.isAdmin && u.role.toLowerCase() != 'admin')
+              .toList();
+        });
   }
 
   @override
@@ -110,12 +215,15 @@ class FirebaseDbService implements DatabaseService {
 
   @override
   Future<List<AppointmentModel>> getAllAppointmentsAdmin() async {
-    final query = await _firestore
-        .collection('appointments')
-        .orderBy('preferredDateTime', descending: true)
-        .get();
-
-    return query.docs.map((doc) => _mapToAppointment(doc)).toList();
+    try {
+      final query = await _firestore.collection('appointments').get();
+      final list = query.docs.map((doc) => _mapToAppointment(doc)).toList();
+      list.sort((a, b) => b.preferredDateTime.compareTo(a.preferredDateTime));
+      return list;
+    } catch (e) {
+      print('Error fetching admin appointments: $e');
+      return [];
+    }
   }
 
   Stream<List<AppointmentModel>> streamUserAppointments(String userId) {
@@ -163,45 +271,46 @@ class FirebaseDbService implements DatabaseService {
   }
 
   AppointmentModel _mapToAppointment(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data()!;
+    final data = doc.data() ?? {};
+    
+    DateTime parseDate(dynamic val) {
+      if (val is Timestamp) return val.toDate();
+      if (val is String) {
+        try {
+          return DateTime.parse(val);
+        } catch (_) {}
+      }
+      return DateTime.now();
+    }
+
+    DateTime prefDate = parseDate(data['preferredDateTime'] ?? data['appointmentDate']);
+
     return AppointmentModel(
-      id: data['id'] ?? doc.id,
+      id: data['id'] ?? data['appointmentId'] ?? doc.id,
       userId: data['userId'] ?? data['patientId'] ?? '',
-      patientName: data['patientName'] ?? 'Unknown',
+      patientName: data['patientName'] ?? 'Unknown Patient',
       patientEmail: data['patientEmail'] ?? '',
       mobileNumber: data['mobileNumber'] ?? data['patientMobile'] ?? '',
       doctorId: data['doctorId'] ?? '',
       doctorName: data['doctorName'] ?? '',
-      doctorSpecialty: data['doctorSpecialty'] ?? '',
-      preferredDateTime: data['preferredDateTime'] is Timestamp 
-          ? (data['preferredDateTime'] as Timestamp).toDate() 
-          : (data['appointmentDate'] is Timestamp ? (data['appointmentDate'] as Timestamp).toDate() : DateTime.now()),
+      doctorSpecialty: data['doctorSpecialty'] ?? data['department'] ?? '',
+      preferredDateTime: prefDate,
       symptomsSummary: data['symptomsSummary'] ?? '',
       reportId: data['reportId'] ?? '',
       reportFileName: data['reportFileName'] ?? '',
       reportUrl: data['reportUrl'] ?? '',
       reportStoragePath: data['reportStoragePath'] ?? '',
-      reportUploadedAt: data['reportUploadedAt'] is Timestamp 
-          ? (data['reportUploadedAt'] as Timestamp).toDate() 
-          : null,
+      reportUploadedAt: data['reportUploadedAt'] != null ? parseDate(data['reportUploadedAt']) : null,
       riskScore: (data['riskScore'] is num) ? (data['riskScore'] as num).toDouble() : 0.0,
       riskLevel: data['riskLevel'] ?? 'Moderate Risk',
       status: data['status'] ?? 'Pending',
       rejectionReason: data['rejectionReason'],
-      previousAppointmentDate: data['previousAppointmentDate'] is Timestamp 
-          ? (data['previousAppointmentDate'] as Timestamp).toDate() 
-          : null,
+      previousAppointmentDate: data['previousAppointmentDate'] != null ? parseDate(data['previousAppointmentDate']) : null,
       previousAppointmentTime: data['previousAppointmentTime'],
-      completedAt: data['completedAt'] is Timestamp 
-          ? (data['completedAt'] as Timestamp).toDate() 
-          : null,
+      completedAt: data['completedAt'] != null ? parseDate(data['completedAt']) : null,
       completedBy: data['completedBy'],
-      createdAt: data['createdAt'] is Timestamp 
-          ? (data['createdAt'] as Timestamp).toDate() 
-          : DateTime.now(),
-      updatedAt: data['updatedAt'] is Timestamp 
-          ? (data['updatedAt'] as Timestamp).toDate() 
-          : null,
+      createdAt: parseDate(data['createdAt']),
+      updatedAt: data['updatedAt'] != null ? parseDate(data['updatedAt']) : null,
     );
   }
 
@@ -387,26 +496,47 @@ class FirebaseDbService implements DatabaseService {
   }
 
   @override
+  Future<void> deleteAppointment(String appointmentId) async {
+    await _firestore.collection('appointments').doc(appointmentId).delete();
+  }
+
+  @override
   Future<List<NotificationModel>> getNotifications(String userId) async {
     final query = await _firestore
         .collection('notifications')
-        .where('userId', isEqualTo: userId)
         .get();
 
-    final notifications = query.docs.map((doc) {
-      final data = doc.data();
-      return NotificationModel(
-        id: data['id'] ?? doc.id,
-        userId: data['userId'],
-        title: data['title'] ?? '',
-        body: data['body'] ?? '',
-        timestamp: (data['timestamp'] as Timestamp).toDate(),
-        category: data['category'] ?? '',
-      );
-    }).toList();
-    
+    final notifications = query.docs
+        .map((doc) => _mapToNotification(doc))
+        .where((n) => n.userId == userId || userId == 'admin' || n.userId == 'admin' || n.userId == 'all')
+        .toList();
+
     notifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     return notifications;
+  }
+
+  @override
+  Future<List<NotificationModel>> getAllNotificationsAdmin() async {
+    try {
+      final query = await _firestore.collection('notifications').get();
+      final list = query.docs.map((doc) => _mapToNotification(doc)).toList();
+      list.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      return list;
+    } catch (e) {
+      print('Error fetching admin notifications: $e');
+      return [];
+    }
+  }
+
+  Stream<List<NotificationModel>> streamAdminNotifications() {
+    return _firestore
+        .collection('notifications')
+        .snapshots()
+        .map((snapshot) {
+          final list = snapshot.docs.map((doc) => _mapToNotification(doc)).toList();
+          list.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+          return list;
+        });
   }
 
   @override

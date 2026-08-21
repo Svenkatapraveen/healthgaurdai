@@ -237,7 +237,7 @@ Future<Uint8List> generate21SectionMedicalReportPdfBytes({
                 ],
               ),
             );
-          }).toList(),
+          }),
           pw.SizedBox(height: 14),
 
           // ==================== 5. SYMPTOM SEVERITY ANALYSIS ====================
@@ -360,7 +360,7 @@ Future<Uint8List> generate21SectionMedicalReportPdfBytes({
                 ],
               ),
             );
-          }).toList(),
+          }),
           pw.SizedBox(height: 14),
 
           // ==================== 14. RED FLAG / URGENT SYMPTOMS ====================

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Theme Primary Colors
-  static const Color primaryBlue = Color(0xFF0F2C59); // Deep Navy / Medical Blue
-  static const Color navyDark = Color(0xFF0A192F);
-  static const Color primaryTeal = Color(0xFF00A896); // Teal / Healthcare Cyan
+  // Theme Primary Colors - Refined Healthcare Glassmorphism Palette
+  static const Color primaryBlue = Color(0xFF0EA5E9); // Medical Blue
+  static const Color navyDark = Color(0xFF0F172A); // Dark Slate
+  static const Color primaryTeal = Color(0xFF14B8A6); // Healthcare Teal
   static const Color primaryGreen = Color(0xFF10B981);
   static const Color accentCyan = Color(0xFF0EA5E9);
   
@@ -12,29 +12,29 @@ class AppColors {
   static const Color success = Color(0xFF10B981);
   static const Color warning = Color(0xFFF59E0B);
   static const Color danger = Color(0xFFEF4444);
-  static const Color info = Color(0xFF3B82F6);
+  static const Color info = Color(0xFF0EA5E9);
 
   // Risk Indicator Colors
   static const Color riskLow = Color(0xFF10B981);
   static const Color riskModerate = Color(0xFFF59E0B);
-  static const Color riskHigh = Color(0xFFF97316);
-  static const Color riskCritical = Color(0xFFEF4444);
+  static const Color riskHigh = Color(0xFFEF4444);
+  static const Color riskCritical = Color(0xFFDC2626);
 
-  // Light Mode Colors
-  static const Color lightBg = Color(0xFFF8FAFC);
-  static const Color lightSurface = Color(0xFFFFFFFF);
+  // Light Mode Colors (Soft Ice Blue / Medical Blue background)
+  static const Color lightBg = Color(0xFFF7FCFF);
+  static const Color lightSurface = Color(0x94FFFFFF); // ~0.58 white glass
   static const Color lightTextPrimary = Color(0xFF0F172A);
   static const Color lightTextSecondary = Color(0xFF64748B);
-  static const Color lightBorder = Color(0xFFE2E8F0);
-  static const Color lightHover = Color(0xFFF1F5F9);
+  static const Color lightBorder = Color(0xBFFFFFFF); // ~0.75 white border
+  static const Color lightHover = Color(0x1A0EA5E9);
 
   // Dark Mode Colors
   static const Color darkBg = Color(0xFF0B132B);
-  static const Color darkSurface = Color(0xFF1C2541);
+  static const Color darkSurface = Color(0x941C2541);
   static const Color darkTextPrimary = Color(0xFFF8FAFC);
   static const Color darkTextSecondary = Color(0xFF94A3B8);
-  static const Color darkBorder = Color(0xFF334155);
-  static const Color darkHover = Color(0xFF1E293B);
+  static const Color darkBorder = Color(0x33FFFFFF);
+  static const Color darkHover = Color(0x2214B8A6);
 
   // Helper getters depending on brightness
   static Color getBg(bool isDark) => isDark ? darkBg : lightBg;
@@ -44,19 +44,19 @@ class AppColors {
   static Color getBorder(bool isDark) => isDark ? darkBorder : lightBorder;
   static Color getHover(bool isDark) => isDark ? darkHover : lightHover;
 
-  // Gradients for subtle modern UI elements
+  // Gradients for modern Glassmorphism UI elements
   static LinearGradient glassGradient(bool isDark) {
     return LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
       colors: isDark
           ? [
-              const Color(0xFF1C2541).withOpacity(0.8),
-              const Color(0xFF0B132B).withOpacity(0.8),
+              const Color(0xFF1C2541).withValues(alpha: 0.65),
+              const Color(0xFF0B132B).withValues(alpha: 0.50),
             ]
           : [
-              Colors.white.withOpacity(0.9),
-              const Color(0xFFF8FAFC).withOpacity(0.9),
+              Colors.white.withValues(alpha: 0.68),
+              Colors.white.withValues(alpha: 0.48),
             ],
     );
   }
@@ -65,17 +65,17 @@ class AppColors {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0xFF0F2C59),
-      Color(0xFF0A192F),
+      Color(0xFF0EA5E9),
+      Color(0xFF14B8A6),
     ],
   );
 
   static LinearGradient primaryGradient = const LinearGradient(
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
     colors: [
-      Color(0xFF0F2C59),
-      Color(0xFF00A896),
+      Color(0xFF0EA5E9),
+      Color(0xFF14B8A6),
     ],
   );
 }

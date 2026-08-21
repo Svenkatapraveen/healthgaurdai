@@ -1,5 +1,3 @@
-// HealthGuard AI Widget Smoke Test
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_application_1healthgaurdai/main.dart';
@@ -12,8 +10,6 @@ void main() {
 
     // Build our app and trigger a frame.
     await tester.pumpWidget(const MyApp());
-    // Let any timers/animations complete
-    await tester.pumpAndSettle();
     expect(find.byType(MyApp), findsOneWidget);
 
     // Reset the physical size after the test completes

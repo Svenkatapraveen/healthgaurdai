@@ -80,10 +80,12 @@ class _AppTextFieldState extends State<AppTextField> {
             hintText: widget.hint,
             hintStyle: TextStyle(
               fontSize: 14,
-              color: AppColors.getTextSecondary(isDark).withOpacity(0.7),
+              color: AppColors.getTextSecondary(isDark).withValues(alpha: 0.7),
             ),
             filled: true,
-            fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+            fillColor: isDark
+                ? const Color(0x7A1C2541)
+                : const Color(0xA6FFFFFF), // rgba(255,255,255,0.65)
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             prefixIcon: widget.prefixIcon != null
                 ? Icon(
@@ -107,28 +109,30 @@ class _AppTextFieldState extends State<AppTextField> {
                   )
                 : widget.suffixIcon,
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: AppColors.getBorder(isDark),
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : const Color(0x4094A3B8), // rgba(148,163,184,0.25)
                 width: 1,
               ),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(
-                color: AppColors.primaryBlue,
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: const Color(0xFF0EA5E9).withValues(alpha: 0.85), // rgba(14,165,233,0.55)
                 width: 1.5,
               ),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(
                 color: AppColors.danger,
                 width: 1,
               ),
             ),
             focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(
                 color: AppColors.danger,
                 width: 1.5,
@@ -140,3 +144,4 @@ class _AppTextFieldState extends State<AppTextField> {
     );
   }
 }
+

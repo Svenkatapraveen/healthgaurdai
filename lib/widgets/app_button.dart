@@ -35,7 +35,7 @@ class AppButton extends StatelessWidget {
 
     switch (size) {
       case AppButtonSize.small:
-        padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+        padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 8);
         fontSize = 13;
         iconSize = 16;
         height = 36;
@@ -54,21 +54,23 @@ class AppButton extends StatelessWidget {
         break;
     }
 
-    Color bgColor;
-    Color textColor;
+    Color bgColor = Colors.transparent;
+    Color textColor = Colors.white;
     BorderSide borderSide = BorderSide.none;
+    Gradient? gradient;
+    List<BoxShadow>? boxShadow;
 
     switch (variant) {
       case AppButtonVariant.secondary:
-        bgColor = isDark ? AppColors.darkHover : const Color(0xFFE2E8F0);
+        bgColor = isDark ? const Color(0x33FFFFFF) : const Color(0xE6E2E8F0);
         textColor = AppColors.getTextPrimary(isDark);
         break;
       case AppButtonVariant.outline:
-        bgColor = Colors.transparent;
+        bgColor = isDark ? const Color(0x1F14B8A6) : const Color(0x140EA5E9);
         textColor = isDark ? AppColors.primaryTeal : AppColors.primaryBlue;
         borderSide = BorderSide(
-          color: isDark ? AppColors.primaryTeal : AppColors.primaryBlue,
-          width: 1.5,
+          color: (isDark ? AppColors.primaryTeal : AppColors.primaryBlue).withValues(alpha: 0.5),
+          width: 1.2,
         );
         break;
       case AppButtonVariant.text:
@@ -78,10 +80,31 @@ class AppButton extends StatelessWidget {
       case AppButtonVariant.danger:
         bgColor = AppColors.danger;
         textColor = Colors.white;
+        boxShadow = [
+          BoxShadow(
+            color: AppColors.danger.withValues(alpha: 0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ];
         break;
       case AppButtonVariant.primary:
-        bgColor = AppColors.primaryBlue;
+        gradient = const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF0EA5E9), // Medical Blue
+            Color(0xFF14B8A6), // Healthcare Teal
+          ],
+        );
         textColor = Colors.white;
+        boxShadow = [
+          BoxShadow(
+            color: const Color(0xFF0EA5E9).withValues(alpha: 0.24),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ];
         break;
     }
 
@@ -115,22 +138,33 @@ class AppButton extends StatelessWidget {
       ],
     );
 
-    return SizedBox(
+    return Container(
       height: height,
       width: isFullWidth ? double.infinity : null,
+      decoration: BoxDecoration(
+        color: gradient == null ? bgColor : null,
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: boxShadow,
+      ),
       child: Material(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(10),
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: isLoading ? null : onPressed,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           child: Container(
             padding: padding,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              border: borderSide != BorderSide.none ? Border(
-                top: borderSide, bottom: borderSide, left: borderSide, right: borderSide
-              ) : null,
+              borderRadius: BorderRadius.circular(12),
+              border: borderSide != BorderSide.none
+                  ? Border(
+                      top: borderSide,
+                      bottom: borderSide,
+                      left: borderSide,
+                      right: borderSide,
+                    )
+                  : null,
             ),
             child: content,
           ),
@@ -139,3 +173,4 @@ class AppButton extends StatelessWidget {
     );
   }
 }
+
