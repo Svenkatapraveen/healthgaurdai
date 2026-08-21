@@ -21,6 +21,16 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
+      - name: Set up Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Node.js Test Dependencies
+        run: |
+          cd appium_node
+          npm install
+
       - name: Install Test Dependencies
         run: |
           python -m pip install --upgrade pip
@@ -43,6 +53,11 @@ jobs:
         run: |
           python run_tests.py --all --headless
 
+      - name: Run Node.js Appium Mobile E2E Tests
+        run: |
+          cd appium_node
+          npm test
+
       - name: Export Test Cases Excel / CSV
         if: always()
         run: |
@@ -57,6 +72,7 @@ jobs:
             tests/reports/report.html
             tests/reports/junit.xml
             tests/reports/HealthGuard_AI_Test_Cases_459.csv
+            tests/reports/HealthGuard_AI_Test_Cases_459.xlsx
             tests/reports/execution.log
             tests/reports/screenshots/
           retention-days: 14

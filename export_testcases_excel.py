@@ -2,6 +2,9 @@ import subprocess
 import sys
 import os
 import csv
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 
 def generate_test_case_export():
     print("Exporting 459 automated test cases to CSV & Excel format...")
@@ -78,16 +81,73 @@ def generate_test_case_export():
             test_id += 1
 
     os.makedirs("tests/reports", exist_ok=True)
-    csv_file = "tests/reports/HealthGuard_AI_Test_Cases_459.csv"
     
+    # CSV Export
+    csv_file = "tests/reports/HealthGuard_AI_Test_Cases_459.csv"
     fieldnames = ["Test ID", "Framework", "Category / Feature", "Module File", "Test Class", "Test Case Name", "Status", "Execution"]
     with open(csv_file, mode="w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(test_cases)
         
+    # Excel Export with Premium Styles
+    xlsx_file = "tests/reports/HealthGuard_AI_Test_Cases_459.xlsx"
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Test Cases"
+    
+    ws.views.sheetView[0].showGridLines = True
+    
+    header_fill = PatternFill(start_color="0D9488", end_color="0D9488", fill_type="solid")
+    header_font = Font(name="Segoe UI", size=11, bold=True, color="FFFFFF")
+    data_font = Font(name="Segoe UI", size=10)
+    center_align = Alignment(horizontal="center", vertical="center")
+    left_align = Alignment(horizontal="left", vertical="center")
+    
+    thin_border = Border(
+        left=Side(style='thin', color='DDDDDD'),
+        right=Side(style='thin', color='DDDDDD'),
+        top=Side(style='thin', color='DDDDDD'),
+        bottom=Side(style='thin', color='DDDDDD')
+    )
+    
+    # Write & style headers
+    for col_idx, header in enumerate(fieldnames, start=1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = center_align
+        cell.border = thin_border
+        
+    # Write & style data
+    for row_idx, tc in enumerate(test_cases, start=2):
+        for col_idx, header in enumerate(fieldnames, start=1):
+            val = tc[header]
+            cell = ws.cell(row=row_idx, column=col_idx, value=val)
+            cell.font = data_font
+            cell.border = thin_border
+            
+            if col_idx in [1, 2, 7, 8]:
+                cell.alignment = center_align
+            else:
+                cell.alignment = left_align
+                
+            if col_idx == 7: # Status
+                if val == "PASSED":
+                    cell.font = Font(name="Segoe UI", size=10, bold=True, color="15803D")
+                    cell.fill = PatternFill(start_color="DCFCE7", end_color="DCFCE7", fill_type="solid")
+                    
+    # Auto-adjust column widths
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = get_column_letter(col[0].column)
+        ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
+        
+    wb.save(xlsx_file)
+        
     print(f"Successfully exported {len(test_cases)} test cases to:")
-    print(f"   CSV / Excel File : {os.path.abspath(csv_file)}")
+    print(f"   CSV File   : {os.path.abspath(csv_file)}")
+    print(f"   Excel File : {os.path.abspath(xlsx_file)}")
 
 if __name__ == "__main__":
     generate_test_case_export()

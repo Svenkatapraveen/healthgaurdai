@@ -50,3 +50,7 @@ tests/reports/
 # IDE files
 flutter_analyze.txt
 
+# Node modules
+node_modules/
+package-lock.json
+
