@@ -40,13 +40,25 @@ jobs:
         run: |
           python run_tests.py --collect-only
 
-      - name: Execute Full Automated Test Suite (Selenium, API, Performance)
+      - name: Execute Pytest Performance Benchmarks (400 Test Cases)
         env:
           BASE_URL: ${{ secrets.TEST_BASE_URL || 'http://localhost:5000' }}
           API_BASE_URL: ${{ secrets.TEST_API_BASE_URL || 'http://localhost:5000/api' }}
           HEADLESS: "true"
         run: |
-          python run_tests.py --all --headless
+          python run_tests.py --performance
+
+      - name: Run 1-Minute Baseline Load Test (100 Virtual Users)
+        run: |
+          python tests/performance/run_load_test.py
+
+      - name: Execute Full Automated Test Suite (Selenium, API)
+        env:
+          BASE_URL: ${{ secrets.TEST_BASE_URL || 'http://localhost:5000' }}
+          API_BASE_URL: ${{ secrets.TEST_API_BASE_URL || 'http://localhost:5000/api' }}
+          HEADLESS: "true"
+        run: |
+          python run_tests.py --web --api --headless
 
       - name: Run Node.js Appium Mobile E2E Tests
         run: |
