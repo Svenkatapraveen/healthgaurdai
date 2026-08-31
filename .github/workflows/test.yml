@@ -1,0 +1,85 @@
+name: HealthGuard AI Comprehensive Test Suite & CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, dev ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test_suite:
+    name: Run Automated Test Framework (400+ Test Cases)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Set up Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Node.js Test Dependencies
+        run: |
+          cd appium_node
+          npm install
+
+      - name: Install Test Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify Test Case Collection (400+ Test Cases)
+        run: |
+          python run_tests.py --collect-only
+
+      - name: Execute Pytest Performance Benchmarks (400 Test Cases)
+        env:
+          BASE_URL: ${{ secrets.TEST_BASE_URL || 'http://localhost:5000' }}
+          API_BASE_URL: ${{ secrets.TEST_API_BASE_URL || 'http://localhost:5000/api' }}
+          HEADLESS: "true"
+        run: |
+          python run_tests.py --performance
+
+      - name: Run 1-Minute Baseline Load Test (100 Virtual Users)
+        run: |
+          python tests/performance/run_load_test.py
+
+      - name: Execute Full Automated Test Suite (Selenium, API)
+        env:
+          BASE_URL: ${{ secrets.TEST_BASE_URL || 'http://localhost:5000' }}
+          API_BASE_URL: ${{ secrets.TEST_API_BASE_URL || 'http://localhost:5000/api' }}
+          HEADLESS: "true"
+        run: |
+          python run_tests.py --web --api --headless
+
+      - name: Run Node.js Appium Mobile E2E Tests
+        run: |
+          cd appium_node
+          npm test
+
+      - name: Export Test Cases Excel / CSV
+        if: always()
+        run: |
+          python export_testcases_excel.py
+
+      - name: Upload Test Artifacts & Excel Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-execution-reports
+          path: |
+            tests/reports/report.html
+            tests/reports/junit.xml
+            tests/reports/HealthGuard_AI_Test_Cases_459.csv
+            tests/reports/HealthGuard_AI_Test_Cases_459.xlsx
+            tests/reports/execution.log
+            tests/reports/screenshots/
+          retention-days: 14

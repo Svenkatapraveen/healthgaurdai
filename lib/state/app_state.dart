@@ -1,0 +1,647 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
+import '../services/db_service.dart';
+import '../services/firebase_auth_service.dart';
+import '../services/firebase_db_service.dart';
+import '../data/doctor_database.dart';
+
+class AppState extends ChangeNotifier {
+  final AuthService _authService = FirebaseAuthService();
+  final DatabaseService _dbService = FirebaseDbService();
+
+  AppUser? _currentUser;
+  DoctorModel? _currentDoctor;
+  bool _isLoading = false;
+  bool _isAuthInitialized = false;
+  ThemeMode _themeMode = ThemeMode.dark; // Defaulting to professional dark theme
+
+  AppState() {
+    _initAuth();
+  }
+
+  Future<void> _initAuth() async {
+    try {
+      final user = await _authService.getCurrentUser();
+      if (user != null) {
+        _currentUser = user;
+        await reloadUserData();
+      }
+    } catch (e) {
+      debugPrint('Auth initialization note: $e');
+    } finally {
+      _isAuthInitialized = true;
+      notifyListeners();
+    }
+  }
+
+  List<AssessmentModel> _assessments = [];
+  List<AppointmentModel> _appointments = [];
+  List<NotificationModel> _notifications = [];
+  List<MedicineReminderModel> _reminders = [];
+  List<AppUser> _allPatients = [];
+  int _totalPatientCount = 0;
+
+  StreamSubscription<List<AppointmentModel>>? _appointmentSubscription;
+  StreamSubscription<List<AppUser>>? _patientSubscription;
+  StreamSubscription<List<AssessmentModel>>? _assessmentSubscription;
+  StreamSubscription<List<NotificationModel>>? _notificationSubscription;
+
+  // Getters
+  AppUser? get currentUser => _currentUser;
+  DoctorModel? get currentDoctor => _currentDoctor;
+  bool get isLoading => _isLoading;
+  bool get isAuthInitialized => _isAuthInitialized;
+  ThemeMode get themeMode => _themeMode;
+  bool get isDarkMode => _themeMode == ThemeMode.dark;
+
+  List<AssessmentModel> get assessments => _assessments;
+  List<AppointmentModel> get appointments => _appointments;
+  List<NotificationModel> get notifications => _notifications;
+  List<MedicineReminderModel> get reminders => _reminders;
+  List<AppUser> get allPatients => _allPatients;
+  int get totalPatientCount => _totalPatientCount;
+
+  AuthService get authService => _authService;
+  DatabaseService get dbService => _dbService;
+
+  // Toggle Theme
+  void toggleTheme() {
+    _themeMode = _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    notifyListeners();
+  }
+
+  void setLoading(bool loading) {
+    _isLoading = loading;
+    notifyListeners();
+  }
+
+  // Reload data from DB and setup real-time listener
+  Future<void> reloadUserData() async {
+    if (_currentUser == null && _currentDoctor == null) return;
+    
+    await _appointmentSubscription?.cancel();
+    await _patientSubscription?.cancel();
+    await _assessmentSubscription?.cancel();
+    await _notificationSubscription?.cancel();
+
+    if (_currentUser != null) {
+      final uid = _currentUser!.uid;
+      if (_currentUser!.isAdmin || _currentUser!.role == 'admin') {
+        _appointments = await _dbService.getAllAppointmentsAdmin();
+        _allPatients = await _dbService.getAllPatientsAdmin();
+        _assessments = await _dbService.getAllAssessmentsAdmin();
+        _notifications = await _dbService.getAllNotificationsAdmin();
+        _totalPatientCount = _allPatients.length;
+
+        final db = _dbService;
+        if (db is FirebaseDbService) {
+          _appointmentSubscription = db.streamAllAppointmentsAdmin().listen((appts) {
+            _appointments = appts;
+            notifyListeners();
+          });
+          _patientSubscription = db.streamAllPatientsAdmin().listen((pts) {
+            _allPatients = pts;
+            _totalPatientCount = pts.length;
+            notifyListeners();
+          });
+          _assessmentSubscription = db.streamAllAssessmentsAdmin().listen((asms) {
+            _assessments = asms;
+            notifyListeners();
+          });
+          _notificationSubscription = db.streamAdminNotifications().listen((notifs) {
+            _notifications = notifs;
+            notifyListeners();
+          });
+        }
+      } else {
+        _assessments = await _dbService.getAssessments(uid);
+        _appointments = await _dbService.getAppointments(uid);
+        final db = _dbService;
+        if (db is FirebaseDbService) {
+          _appointmentSubscription = db.streamUserAppointments(uid).listen((appts) {
+            _appointments = appts;
+            notifyListeners();
+          });
+          _notificationSubscription = db.streamUserNotifications(uid).listen((notifs) {
+            _notifications = notifs;
+            notifyListeners();
+          });
+        }
+        _notifications = await _dbService.getNotifications(uid);
+        _reminders = await _dbService.getReminders(uid);
+        _calculateTotalPatients();
+      }
+    }
+    notifyListeners();
+  }
+
+  void _calculateTotalPatients() {
+    if (_allPatients.isNotEmpty) {
+      _totalPatientCount = _allPatients.length;
+      return;
+    }
+    final uniquePatientIds = <String>{};
+    for (var appt in _appointments) {
+      if (appt.userId.isNotEmpty) {
+        uniquePatientIds.add(appt.userId);
+      }
+    }
+    _totalPatientCount = uniquePatientIds.length;
+  }
+
+  // Authentication wrapper methods
+  Future<bool> login(String email, String password) async {
+    setLoading(true);
+    try {
+      final user = await _authService.signInWithEmail(email, password);
+      if (user != null) {
+        _currentUser = user;
+        await reloadUserData();
+        setLoading(false);
+        return true;
+      }
+    } catch (e) {
+      setLoading(false);
+      rethrow;
+    }
+    setLoading(false);
+    return false;
+  }
+
+  Future<bool> register({
+    required String fullName,
+    required String email,
+    required String mobile,
+    required int age,
+    required String gender,
+    required String password,
+  }) async {
+    setLoading(true);
+    try {
+      final user = await _authService.registerWithEmail(
+        fullName: fullName,
+        email: email,
+        mobile: mobile,
+        age: age,
+        gender: gender,
+        password: password,
+      );
+      if (user != null) {
+        await _dbService.addNotification(NotificationModel(
+          id: 'notif_reg_${DateTime.now().millisecondsSinceEpoch}',
+          userId: 'admin',
+          title: 'New Patient Registered 👤',
+          body: 'New patient registered: $fullName ($email)',
+          timestamp: DateTime.now(),
+          category: 'Alert',
+        ));
+        await _authService.logout();
+        _currentUser = null;
+        setLoading(false);
+        return true;
+      }
+    } catch (e) {
+      setLoading(false);
+      rethrow;
+    }
+    setLoading(false);
+    return false;
+  }
+
+  Future<bool> loginWithGoogle({String? email, String? displayName}) async {
+    setLoading(true);
+    try {
+      final user = await _authService.signInWithGoogle(email: email, displayName: displayName);
+      if (user != null) {
+        _currentUser = user;
+        await reloadUserData();
+        setLoading(false);
+        return true;
+      }
+    } catch (e) {
+      setLoading(false);
+    }
+    setLoading(false);
+    return false;
+  }
+
+  Future<void> requestPasswordReset(String email) async {
+    setLoading(true);
+    try {
+      await _authService.sendOtp(email);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  Future<void> resetPassword(String email) => requestPasswordReset(email);
+
+  Future<bool> checkEmailExists(String email) async {
+    setLoading(true);
+    try {
+      return await _authService.checkEmailExists(email);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  Future<void> sendOtp(String email) async {
+    setLoading(true);
+    try {
+      await _authService.sendOtp(email);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  Future<bool> verifyOtp(String email, String otp) async {
+    setLoading(true);
+    try {
+      return await _authService.verifyOtp(email, otp);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  Future<void> resetPasswordWithOtp(String email, String otp, String newPassword) async {
+    setLoading(true);
+    try {
+      await _authService.resetPasswordWithOtp(email, otp, newPassword);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  Future<void> logout() async {
+    await _appointmentSubscription?.cancel();
+    await _patientSubscription?.cancel();
+    await _assessmentSubscription?.cancel();
+    await _notificationSubscription?.cancel();
+    _appointmentSubscription = null;
+    _patientSubscription = null;
+    _assessmentSubscription = null;
+    _notificationSubscription = null;
+    await _authService.logout();
+    _currentUser = null;
+    _currentDoctor = null;
+    _assessments = [];
+    _appointments = [];
+    _notifications = [];
+    _reminders = [];
+    _allPatients = [];
+    _totalPatientCount = 0;
+    notifyListeners();
+  }
+
+  // Database operations
+  Future<void> submitAssessment(AssessmentModel assessment) async {
+    setLoading(true);
+    await _dbService.addAssessment(assessment);
+    
+    final patientName = _currentUser?.fullName ?? 'Patient';
+    await _dbService.addNotification(NotificationModel(
+      id: 'notif_asm_${DateTime.now().millisecondsSinceEpoch}',
+      userId: 'admin',
+      title: 'New Health Assessment Generated 📄',
+      body: 'New medical report generated for $patientName (Risk Level: ${assessment.riskCategory}).',
+      timestamp: DateTime.now(),
+      category: 'Health',
+    ));
+
+    if (_currentUser != null) {
+      await _dbService.addNotification(NotificationModel(
+        id: 'notif_asm_pt_${DateTime.now().millisecondsSinceEpoch}',
+        userId: _currentUser!.uid,
+        title: 'Health Assessment Completed 📄',
+        body: 'Your health assessment report has been generated (Risk Level: ${assessment.riskCategory}).',
+        timestamp: DateTime.now(),
+        category: 'Health',
+      ));
+      _assessments = await _dbService.getAssessments(_currentUser!.uid);
+    }
+    setLoading(false);
+  }
+
+  Future<void> markNotificationAsRead(String notificationId) async {
+    await _dbService.markNotificationAsRead(notificationId);
+    final idx = _notifications.indexWhere((n) => n.id == notificationId);
+    if (idx != -1) {
+      final old = _notifications[idx];
+      _notifications[idx] = NotificationModel(
+        id: old.id,
+        userId: old.userId,
+        title: old.title,
+        body: old.body,
+        timestamp: old.timestamp,
+        category: old.category,
+        isRead: true,
+      );
+      notifyListeners();
+    }
+  }
+
+  Future<void> createAppointment({
+    required String patientName,
+    String patientEmail = '',
+    required String mobileNumber,
+    required DateTime dateTime,
+    String doctorId = '',
+    String doctorName = '',
+    required String doctorSpecialty,
+    String symptomsSummary = '',
+    String reportId = '',
+    required String reportFileName,
+    required String reportUrl,
+    String reportStoragePath = '',
+    double riskScore = 0.0,
+    String riskLevel = 'Moderate Risk',
+  }) async {
+    if (_currentUser == null) return;
+    setLoading(true);
+    final idSuffix = DateTime.now().millisecondsSinceEpoch.toString().substring(7);
+    final apptId = 'HG-2026-$idSuffix';
+
+    final newAppt = AppointmentModel(
+      id: apptId,
+      userId: _currentUser!.uid,
+      patientName: patientName,
+      patientEmail: patientEmail.isNotEmpty ? patientEmail : (_currentUser?.email ?? ''),
+      mobileNumber: mobileNumber,
+      doctorId: doctorId,
+      doctorName: doctorName,
+      doctorSpecialty: doctorSpecialty,
+      preferredDateTime: dateTime,
+      symptomsSummary: symptomsSummary,
+      reportId: reportId,
+      reportFileName: reportFileName,
+      reportUrl: reportUrl,
+      reportStoragePath: reportStoragePath,
+      reportUploadedAt: DateTime.now(),
+      riskScore: riskScore,
+      riskLevel: riskLevel,
+      status: 'Pending',
+      createdAt: DateTime.now(),
+    );
+    await _dbService.addAppointment(newAppt);
+    
+    final docDisplay = doctorName.isNotEmpty ? doctorName : doctorSpecialty;
+    final dateDisplay = '${dateTime.day}/${dateTime.month}/${dateTime.year} @ ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+
+    // Add Notification for Patient
+    await _dbService.addNotification(NotificationModel(
+      id: 'notif_new_${DateTime.now().millisecondsSinceEpoch}',
+      userId: _currentUser!.uid,
+      title: 'Appointment Request Submitted',
+      body: 'Your appointment request with $docDisplay for $dateDisplay (ID: $apptId) is now Pending approval.',
+      timestamp: DateTime.now(),
+      category: 'Appointment',
+    ));
+
+    // Add Notification for Admin
+    await _dbService.addNotification(NotificationModel(
+      id: 'notif_admin_appt_${DateTime.now().millisecondsSinceEpoch}',
+      userId: 'admin',
+      title: 'New Appointment Request 📅',
+      body: 'New appointment request from $patientName with $docDisplay for $dateDisplay (ID: $apptId)',
+      timestamp: DateTime.now(),
+      category: 'Appointment',
+    ));
+
+    await reloadUserData();
+    setLoading(false);
+  }
+
+  Future<void> createReminder({
+    required String name,
+    required String dosage,
+    required String frequency,
+    required String reminderTime,
+  }) async {
+    if (_currentUser == null) return;
+    setLoading(true);
+    final newReminder = MedicineReminderModel(
+      id: 'rem_${DateTime.now().millisecondsSinceEpoch}',
+      userId: _currentUser!.uid,
+      name: name,
+      dosage: dosage,
+      frequency: frequency,
+      reminderTime: reminderTime,
+      isTaken: false,
+    );
+    await _dbService.addReminder(newReminder);
+    await reloadUserData();
+    setLoading(false);
+  }
+
+  Future<void> updateReminderStatus(String reminderId, bool isTaken) async {
+    await _dbService.toggleReminderStatus(reminderId, isTaken);
+    if (_currentUser != null) {
+      _reminders = await _dbService.getReminders(_currentUser!.uid);
+      notifyListeners();
+    }
+  }
+
+  // Admin capabilities & Real-time Streams
+  Stream<List<AppointmentModel>> streamUserAppointments() {
+    if (_currentUser == null) return Stream.value([]);
+    final db = _dbService;
+    if (db is FirebaseDbService) {
+      return db.streamUserAppointments(_currentUser!.uid);
+    }
+    return Stream.fromFuture(_dbService.getAppointments(_currentUser!.uid));
+  }
+
+  Stream<List<AppointmentModel>> streamAllAppointmentsAdmin() {
+    final db = _dbService;
+    if (db is FirebaseDbService) {
+      return db.streamAllAppointmentsAdmin();
+    }
+    return Stream.fromFuture(_dbService.getAllAppointmentsAdmin());
+  }
+
+  Stream<int> streamUserCount() {
+    final db = _dbService;
+    if (db is FirebaseDbService) {
+      return db.streamUserCount();
+    }
+    return Stream.value(104);
+  }
+
+  Future<bool> updateUserProfile({
+    required String fullName,
+    required String mobileNumber,
+    required int age,
+    required String gender,
+  }) async {
+    if (_currentUser == null) return false;
+    setLoading(true);
+    try {
+      await _authService.updateProfile(
+        uid: _currentUser!.uid,
+        fullName: fullName,
+        email: _currentUser!.email,
+      );
+      _currentUser = AppUser(
+        uid: _currentUser!.uid,
+        fullName: fullName,
+        email: _currentUser!.email,
+        mobileNumber: mobileNumber,
+        age: age,
+        gender: gender,
+        isAdmin: _currentUser!.isAdmin,
+        isEmailVerified: _currentUser!.isEmailVerified,
+      );
+      notifyListeners();
+      setLoading(false);
+      return true;
+    } catch (e) {
+      setLoading(false);
+      return false;
+    }
+  }
+
+  Stream<int> streamAssessmentCount() {
+    final db = _dbService;
+    if (db is FirebaseDbService) {
+      return db.streamAssessmentCount();
+    }
+    return Stream.value(3482);
+  }
+
+  Stream<int> streamAlertCount() {
+    final db = _dbService;
+    if (db is FirebaseDbService) {
+      return db.streamAlertCount();
+    }
+    return Stream.value(5);
+  }
+
+  Future<List<AppointmentModel>> fetchAllAdminAppointments() async {
+    return await _dbService.getAllAppointmentsAdmin();
+  }
+
+  Future<void> updateAppointmentStatusAdmin(
+    String id, 
+    String status, {
+    String? rejectionReason,
+    String? targetUserId,
+    String? doctorName,
+    String? dateStr,
+  }) async {
+    await _dbService.updateAppointmentStatus(id, status, rejectionReason: rejectionReason);
+    
+    // Notify patient
+    final uId = targetUserId ?? _currentUser?.uid;
+    if (uId != null && uId.isNotEmpty) {
+      String title = 'Appointment Status Update';
+      String body = 'Your appointment request (ID: $id) status has been updated to $status.';
+      if (status == 'Approved') {
+        title = 'Appointment Approved 🟢';
+        body = 'Your appointment with ${doctorName ?? "your physician"} has been approved${dateStr != null ? " for $dateStr" : ""}.';
+      } else if (status == 'Rejected') {
+        title = 'Appointment Request Not Approved 🔴';
+        body = 'Your appointment request was not approved.${rejectionReason != null && rejectionReason.isNotEmpty ? " Reason: $rejectionReason" : " Please check the appointment details for more information."}';
+      }
+
+      await _dbService.addNotification(NotificationModel(
+        id: 'notif_status_${DateTime.now().millisecondsSinceEpoch}',
+        userId: uId,
+        title: title,
+        body: body,
+        timestamp: DateTime.now(),
+        category: 'Appointment',
+      ));
+    }
+
+    if (_currentUser != null) {
+      await reloadUserData();
+    }
+  }
+
+  Future<void> rescheduleAppointmentAdmin(
+    String id,
+    DateTime newDateTime, {
+    String? targetUserId,
+    String? doctorName,
+  }) async {
+    final db = _dbService;
+    if (db is FirebaseDbService) {
+      await db.rescheduleAppointment(id, newDateTime);
+    } else {
+      await db.rescheduleAppointment(id, newDateTime);
+    }
+
+    final dateStr = '${newDateTime.day}/${newDateTime.month}/${newDateTime.year} at ${newDateTime.hour.toString().padLeft(2, '0')}:${newDateTime.minute.toString().padLeft(2, '0')}';
+    final uId = targetUserId ?? _currentUser?.uid;
+    if (uId != null && uId.isNotEmpty) {
+      await _dbService.addNotification(NotificationModel(
+        id: 'notif_resched_${DateTime.now().millisecondsSinceEpoch}',
+        userId: uId,
+        title: 'Appointment Rescheduled 🔵',
+        body: 'Your appointment with ${doctorName ?? "your physician"} has been rescheduled to $dateStr.',
+        timestamp: DateTime.now(),
+        category: 'Appointment',
+      ));
+    }
+
+    if (_currentUser != null) {
+      await reloadUserData();
+    }
+  }
+
+  Future<void> deleteAppointmentAdmin(String id) async {
+    await _dbService.deleteAppointment(id);
+    if (_currentUser != null) {
+      await reloadUserData();
+    }
+  }
+
+  Future<void> updateAdminProfile({
+    required String name,
+    required String email,
+    String? profilePic,
+  }) async {
+    if (_currentUser == null) return;
+    setLoading(true);
+    try {
+      final updated = await _authService.updateProfile(
+        uid: _currentUser!.uid,
+        fullName: name,
+        email: email,
+        profilePic: profilePic,
+      );
+      if (updated != null) {
+        _currentUser = updated;
+        notifyListeners();
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  Future<void> updateAdminPassword({required String newPassword}) async {
+    if (_currentUser == null) return;
+    setLoading(true);
+    try {
+      await _authService.updatePassword(newPassword: newPassword);
+    } finally {
+      setLoading(false);
+    }
+  }
+}
+
+// InheritedNotifier wrapper for scoped access in Flutter Widget Tree
+class AppStateProvider extends InheritedNotifier<AppState> {
+  const AppStateProvider({
+    super.key,
+    required AppState state,
+    required super.child,
+  }) : super(notifier: state);
+
+  static AppState of(BuildContext context) {
+    final provider = context.dependOnInheritedWidgetOfExactType<AppStateProvider>();
+    assert(provider != null, 'No AppStateProvider found in context');
+    return provider!.notifier!;
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "healthguard-ai-appium-node",
+  "version": "1.0.0",
+  "description": "Appium Mobile E2E automation test suite for HealthGuard AI in Node.js",
+  "main": "test_mobile_e2e.js",
+  "scripts": {
+    "test": "node test_mobile_e2e.js"
+  },
+  "dependencies": {
+    "webdriverio": "^8.38.0"
+  },
+  "author": "HealthGuard AI Team",
+  "license": "ISC"
+}

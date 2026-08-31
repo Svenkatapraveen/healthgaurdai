@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "125323774503",
+    "project_id": "health-ai-c2308",
+    "storage_bucket": "health-ai-c2308.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:125323774503:android:8412a948969f0dbb82dc02",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1healthgaurdai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBBIyxO4QJ2Ns6tEv-gs0kTO_VyzEmHX0k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
