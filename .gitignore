@@ -54,3 +54,9 @@ flutter_analyze.txt
 node_modules/
 package-lock.json
 
+# Gradle wrapper caches
+.gradle/
+android/wrapper/
+*.lck
+*.part
+

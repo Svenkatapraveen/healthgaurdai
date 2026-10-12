@@ -48,7 +48,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   void _showViewDetailsDialog(AppointmentModel appt) {
     showDialog(
       context: context,
-      builder: (context) => AppModal(
+      builder: (dialogCtx) => AppModal(
         title: 'Appointment Details (${appt.id})',
         icon: Icons.info_outline,
         iconColor: AppColors.primaryBlue,
@@ -74,7 +74,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             label: 'Close',
             variant: AppButtonVariant.secondary,
             size: AppButtonSize.small,
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(dialogCtx).pop(),
           ),
           if (appt.reportId.isNotEmpty) ...[
             const SizedBox(width: 8),
@@ -83,7 +83,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               icon: Icons.picture_as_pdf,
               size: AppButtonSize.small,
               onPressed: () {
-                Navigator.pop(context);
+                Navigator.of(dialogCtx).pop();
                 _handleViewReport(appt);
               },
             ),
@@ -119,76 +119,103 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   void _showRejectDialog(AppointmentModel appt, AppState state) {
     final reasonController = TextEditingController();
+    bool isSubmitting = false;
     showDialog(
       context: context,
-      builder: (context) => AppModal(
-        title: 'Reject Appointment Request',
-        icon: Icons.cancel_outlined,
-        iconColor: AppColors.danger,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Are you sure you want to reject the appointment request for ${appt.patientName}?', style: const TextStyle(fontSize: 13)),
-            const SizedBox(height: 14),
-            TextField(
-              controller: reasonController,
-              decoration: InputDecoration(
-                labelText: 'Reason for rejection (Optional)',
-                hintText: 'e.g. Doctor unavailable on requested date',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AppModal(
+          title: 'Reject Appointment Request',
+          icon: Icons.cancel_outlined,
+          iconColor: AppColors.danger,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Are you sure you want to reject the appointment request for ${appt.patientName}?', style: const TextStyle(fontSize: 13)),
+              const SizedBox(height: 14),
+              TextField(
+                controller: reasonController,
+                enabled: !isSubmitting,
+                decoration: InputDecoration(
+                  labelText: 'Reason for rejection (Optional)',
+                  hintText: 'e.g. Doctor unavailable on requested date',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                maxLines: 2,
               ),
-              maxLines: 2,
+            ],
+          ),
+          actions: [
+            AppButton(
+              label: 'Cancel',
+              variant: AppButtonVariant.secondary,
+              size: AppButtonSize.small,
+              onPressed: isSubmitting ? null : () => Navigator.of(dialogCtx).pop(),
+            ),
+            const SizedBox(width: 8),
+            AppButton(
+              label: isSubmitting ? 'Rejecting...' : 'Confirm Rejection',
+              variant: AppButtonVariant.danger,
+              size: AppButtonSize.small,
+              isLoading: isSubmitting,
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      setDialogState(() => isSubmitting = true);
+                      try {
+                        final reason = reasonController.text.trim();
+                        await state.updateAppointmentStatusAdmin(
+                          appt.id,
+                          'Rejected',
+                          rejectionReason: reason.isNotEmpty ? reason : null,
+                          targetUserId: appt.userId,
+                          doctorName: appt.doctorName.isNotEmpty ? appt.doctorName : appt.doctorSpecialty,
+                        );
+                        if (dialogCtx.mounted) {
+                          Navigator.of(dialogCtx).pop();
+                        }
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Appointment request rejected.'), backgroundColor: AppColors.danger),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() => isSubmitting = false);
+                        if (dialogCtx.mounted) {
+                          Navigator.of(dialogCtx).pop();
+                        }
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Failed to reject appointment: $e'), backgroundColor: AppColors.danger),
+                          );
+                        }
+                      }
+                    },
             ),
           ],
         ),
-        actions: [
-          AppButton(
-            label: 'Cancel',
-            variant: AppButtonVariant.secondary,
-            size: AppButtonSize.small,
-            onPressed: () => Navigator.pop(context),
-          ),
-          const SizedBox(width: 8),
-          AppButton(
-            label: 'Confirm Rejection',
-            variant: AppButtonVariant.danger,
-            size: AppButtonSize.small,
-            onPressed: () async {
-              Navigator.pop(context);
-              final reason = reasonController.text.trim();
-              await state.updateAppointmentStatusAdmin(
-                appt.id,
-                'Rejected',
-                rejectionReason: reason.isNotEmpty ? reason : null,
-                targetUserId: appt.userId,
-                doctorName: appt.doctorName.isNotEmpty ? appt.doctorName : appt.doctorSpecialty,
-              );
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Appointment request rejected.'), backgroundColor: AppColors.danger),
-                );
-              }
-            },
-          ),
-        ],
       ),
     );
   }
 
   void _showRescheduleDialog(AppointmentModel appt, AppState state) async {
-    DateTime selectedDate = appt.preferredDateTime;
-    TimeOfDay selectedTime = TimeOfDay.fromDateTime(appt.preferredDateTime);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    DateTime initDate = DateTime(appt.preferredDateTime.year, appt.preferredDateTime.month, appt.preferredDateTime.day);
+    if (initDate.isBefore(today)) {
+      initDate = today;
+    }
 
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: selectedDate.isAfter(DateTime.now()) ? selectedDate : DateTime.now().add(const Duration(days: 1)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 90)),
+      initialDate: initDate,
+      firstDate: today,
+      lastDate: today.add(const Duration(days: 90)),
     );
 
     if (pickedDate == null || !mounted) return;
 
+    TimeOfDay selectedTime = TimeOfDay.fromDateTime(appt.preferredDateTime);
     final pickedTime = await showTimePicker(
       context: context,
       initialTime: selectedTime,
@@ -204,17 +231,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       pickedTime.minute,
     );
 
-    await state.rescheduleAppointmentAdmin(
-      appt.id,
-      newDateTime,
-      targetUserId: appt.userId,
-      doctorName: appt.doctorName.isNotEmpty ? appt.doctorName : appt.doctorSpecialty,
-    );
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Appointment rescheduled successfully.'), backgroundColor: AppColors.success),
+    try {
+      await state.rescheduleAppointmentAdmin(
+        appt.id,
+        newDateTime,
+        targetUserId: appt.userId,
+        doctorName: appt.doctorName.isNotEmpty ? appt.doctorName : appt.doctorSpecialty,
       );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appointment rescheduled successfully.'), backgroundColor: AppColors.success),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to reschedule appointment: $e'), backgroundColor: AppColors.danger),
+        );
+      }
     }
   }
 
@@ -547,7 +582,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   confirmLabel: 'Approve',
                                 );
                                 if (ok == true) {
-                                  await state.updateAppointmentStatusAdmin(appt.id, 'Approved', targetUserId: appt.userId, doctorName: appt.doctorName);
+                                  try {
+                                    await state.updateAppointmentStatusAdmin(appt.id, 'Approved', targetUserId: appt.userId, doctorName: appt.doctorName);
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Appointment approved successfully.'), backgroundColor: AppColors.success),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Failed to approve appointment: $e'), backgroundColor: AppColors.danger),
+                                      );
+                                    }
+                                  }
                                 }
                               },
                             ),
@@ -574,7 +622,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   confirmLabel: 'Cancel Appointment',
                                 );
                                 if (ok == true) {
-                                  await state.updateAppointmentStatusAdmin(appt.id, 'Cancelled', targetUserId: appt.userId, doctorName: appt.doctorName);
+                                  try {
+                                    await state.updateAppointmentStatusAdmin(appt.id, 'Cancelled', targetUserId: appt.userId, doctorName: appt.doctorName);
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Appointment cancelled.'), backgroundColor: AppColors.warning),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Failed to cancel appointment: $e'), backgroundColor: AppColors.danger),
+                                      );
+                                    }
+                                  }
                                 }
                               },
                             ),
@@ -590,7 +651,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 confirmLabel: 'Delete Record',
                               );
                               if (ok == true) {
-                                await state.deleteAppointmentAdmin(appt.id);
+                                try {
+                                  await state.deleteAppointmentAdmin(appt.id);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Appointment record deleted.'), backgroundColor: AppColors.danger),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Failed to delete appointment: $e'), backgroundColor: AppColors.danger),
+                                    );
+                                  }
+                                }
                               }
                             },
                           ),
@@ -613,7 +687,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AppModal(
+      builder: (dialogCtx) => AppModal(
         title: 'Patient Profile: ${patient.fullName}',
         icon: Icons.person_outline,
         iconColor: AppColors.primaryTeal,
@@ -657,7 +731,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             label: 'Close',
             variant: AppButtonVariant.secondary,
             size: AppButtonSize.small,
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(dialogCtx).pop(),
           ),
         ],
       ),

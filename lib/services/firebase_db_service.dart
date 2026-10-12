@@ -8,7 +8,7 @@ class FirebaseDbService implements DatabaseService {
   factory FirebaseDbService() => _instance;
   FirebaseDbService._internal();
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
 
   AssessmentModel _mapToAssessment(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};

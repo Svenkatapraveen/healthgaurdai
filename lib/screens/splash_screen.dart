@@ -15,6 +15,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   late Animation<double> _scaleAnimation;
   late Animation<double> _opacityAnimation;
 
+  Timer? _navTimer;
+
   @override
   void initState() {
     super.initState();
@@ -34,7 +36,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _controller.forward();
 
     // Navigate based on authentication state
-    Timer(const Duration(milliseconds: 2200), () async {
+    _navTimer = Timer(const Duration(milliseconds: 2200), () async {
       if (!mounted) return;
       final state = AppStateProvider.of(context);
       if (!state.isAuthInitialized) {
@@ -59,6 +61,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   void dispose() {
+    _navTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }

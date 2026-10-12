@@ -177,7 +177,7 @@ class _LifestyleDashboardState extends State<LifestyleDashboard> {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark)),
                 ),
                 DropdownButton<int>(
-                  value: _trendIndex,
+                  value: (_trendIndex >= 0 && _trendIndex < _trendPeriods.length) ? _trendIndex : 0,
                   items: List.generate(_trendPeriods.length, (index) {
                     return DropdownMenuItem(
                       value: index,

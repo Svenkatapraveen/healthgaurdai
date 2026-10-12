@@ -34,22 +34,24 @@ class _EmergencyAlertScreenState extends State<EmergencyAlertScreen> with Single
   void _triggerCall() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: const Text('Initiating Call'),
         content: const Text(
           'Connecting you directly to Emergency Medical Services (911). Confirm dispatch call?',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(dialogCtx).pop(),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Dialing Emergency Services 911...')),
-              );
+              Navigator.of(dialogCtx).pop();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Dialing Emergency Services 911...')),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.riskCritical),
             child: const Text('Call Now'),
@@ -62,22 +64,24 @@ class _EmergencyAlertScreenState extends State<EmergencyAlertScreen> with Single
   void _notifyFamily() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: const Text('Alert Family Contacts'),
         content: const Text(
           'This will transmit your live GPS coordinates and latest AI Symptom assessment logs to Jane Doe (Primary Emergency Contact). Send?',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(dialogCtx).pop(),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Emergency SMS dispatched to contacts.')),
-              );
+              Navigator.of(dialogCtx).pop();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Emergency SMS dispatched to contacts.')),
+                );
+              }
             },
             child: const Text('Send SMS Alert'),
           ),

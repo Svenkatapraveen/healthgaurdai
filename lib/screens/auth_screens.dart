@@ -767,7 +767,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
-                            value: _gender,
+                            value: ['Male', 'Female', 'Other'].contains(_gender) ? _gender : 'Male',
                             isExpanded: true,
                             dropdownColor: AppColors.getSurface(isDark),
                             style: TextStyle(

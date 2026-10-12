@@ -64,13 +64,22 @@ class AppModal extends StatelessWidget {
             label: cancelLabel,
             variant: AppButtonVariant.secondary,
             size: AppButtonSize.small,
-            onPressed: () => Navigator.of(ctx).pop(false),
+            onPressed: () {
+              if (Navigator.of(ctx).canPop()) {
+                Navigator.of(ctx).pop(false);
+              }
+            },
           ),
+          const SizedBox(width: 8),
           AppButton(
             label: confirmLabel,
             variant: confirmVariant,
             size: AppButtonSize.small,
-            onPressed: () => Navigator.of(ctx).pop(true),
+            onPressed: () {
+              if (Navigator.of(ctx).canPop()) {
+                Navigator.of(ctx).pop(true);
+              }
+            },
           ),
         ],
       ),
@@ -116,7 +125,11 @@ class AppModal extends StatelessWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.close, size: 20),
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () {
+                    if (Navigator.of(context).canPop()) {
+                      Navigator.of(context).pop();
+                    }
+                  },
                 ),
               ],
             ),
@@ -124,8 +137,10 @@ class AppModal extends StatelessWidget {
             Flexible(child: SingleChildScrollView(child: content)),
             if (actions != null) ...[
               const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 8,
                 children: actions!,
               ),
             ],

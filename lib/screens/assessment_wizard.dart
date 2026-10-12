@@ -76,7 +76,13 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
       if (user != null) {
         _fullNameCtrl.text = user.fullName;
         if (user.age > 0) _ageCtrl.text = '${user.age}';
-        if (user.gender.isNotEmpty) _patientGender = user.gender;
+        if (user.gender.isNotEmpty) {
+          const valid = ['Male', 'Female', 'Other'];
+          _patientGender = valid.firstWhere(
+            (g) => g.toLowerCase() == user.gender.trim().toLowerCase(),
+            orElse: () => 'Male',
+          );
+        }
         if (state.assessments.isNotEmpty) {
           for (var cond in state.assessments.first.medicalHistory) {
             _selectedHistory.add(cond);
@@ -547,7 +553,7 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
                         Text('Gender', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.getTextPrimary(isDark))),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<String>(
-                          initialValue: _patientGender,
+                          initialValue: ['Male', 'Female', 'Other'].contains(_patientGender) ? _patientGender : 'Male',
                           decoration: InputDecoration(
                             contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                             filled: true,
@@ -1030,7 +1036,7 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
                         Text('Smoking', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.getTextPrimary(isDark))),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<String>(
-                          initialValue: _smoking,
+                          initialValue: ['Never', 'Occasionally', 'Daily'].contains(_smoking) ? _smoking : 'Never',
                           decoration: InputDecoration(filled: true, fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface, contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
                           items: ['Never', 'Occasionally', 'Daily'].map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 12)))).toList(),
                           onChanged: (val) => setState(() => _smoking = val ?? 'Never'),
@@ -1046,7 +1052,7 @@ class _AssessmentWizardState extends State<AssessmentWizard> {
                         Text('Stress Level', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.getTextPrimary(isDark))),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<String>(
-                          initialValue: _stressLevel,
+                          initialValue: ['Low', 'Moderate', 'High'].contains(_stressLevel) ? _stressLevel : 'Moderate',
                           decoration: InputDecoration(filled: true, fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface, contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
                           items: ['Low', 'Moderate', 'High'].map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 12)))).toList(),
                           onChanged: (val) => setState(() => _stressLevel = val ?? 'Moderate'),

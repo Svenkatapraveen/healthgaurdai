@@ -396,7 +396,7 @@ class _MainDashboardState extends State<MainDashboard> {
                           title: 'No Upcoming Consultations',
                           description: 'Book an appointment with specialist doctors.',
                           actionLabel: 'Book Appointment',
-                          onAction: () => setState(() => _currentIndex = 3),
+                          onAction: () => AppLayout.safeNavigate(context, '/booking', '/dashboard'),
                         )
                       else ...[
                         Row(

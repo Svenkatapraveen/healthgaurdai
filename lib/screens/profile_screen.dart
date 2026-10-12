@@ -24,7 +24,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final nameCtrl = TextEditingController(text: user.fullName);
     final mobileCtrl = TextEditingController(text: user.mobileNumber);
     final ageCtrl = TextEditingController(text: user.age > 0 ? '${user.age}' : '30');
-    String selectedGender = user.gender.isNotEmpty ? user.gender : 'Male';
+    const genderOptions = ['Male', 'Female', 'Other'];
+    String selectedGender = genderOptions.firstWhere(
+      (g) => g.toLowerCase() == user.gender.trim().toLowerCase(),
+      orElse: () => 'Male',
+    );
+    bool isSaving = false;
 
     showDialog(
       context: context,
@@ -73,10 +78,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                           ),
-                          items: ['Male', 'Female', 'Other'].map((g) => DropdownMenuItem(value: g, child: Text(g, style: const TextStyle(fontSize: 13)))).toList(),
-                          onChanged: (val) {
-                            if (val != null) setDialogState(() => selectedGender = val);
-                          },
+                          items: genderOptions.map((g) => DropdownMenuItem(value: g, child: Text(g, style: const TextStyle(fontSize: 13)))).toList(),
+                          onChanged: isSaving
+                              ? null
+                              : (val) {
+                                  if (val != null) setDialogState(() => selectedGender = val);
+                                },
                         ),
                       ],
                     ),
@@ -90,38 +97,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
               label: 'Cancel',
               variant: AppButtonVariant.secondary,
               size: AppButtonSize.small,
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: isSaving ? null : () => Navigator.of(ctx).pop(),
             ),
             AppButton(
-              label: 'Save Changes',
+              label: isSaving ? 'Saving...' : 'Save Changes',
               size: AppButtonSize.small,
-              onPressed: () async {
-                final newName = nameCtrl.text.trim();
-                final newMobile = mobileCtrl.text.trim();
-                final newAge = int.tryParse(ageCtrl.text.trim()) ?? user.age;
-                
-                if (newName.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name cannot be empty')));
-                  return;
-                }
+              isLoading: isSaving,
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      final newName = nameCtrl.text.trim();
+                      final newMobile = mobileCtrl.text.trim();
+                      final newAge = int.tryParse(ageCtrl.text.trim()) ?? user.age;
+                      
+                      if (newName.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name cannot be empty')));
+                        return;
+                      }
 
-                final ok = await state.updateUserProfile(
-                  fullName: newName,
-                  mobileNumber: newMobile,
-                  age: newAge,
-                  gender: selectedGender,
-                );
+                      setDialogState(() => isSaving = true);
+                      bool ok = false;
+                      try {
+                        ok = await state.updateUserProfile(
+                          fullName: newName,
+                          mobileNumber: newMobile,
+                          age: newAge,
+                          gender: selectedGender,
+                        );
+                      } catch (e) {
+                        debugPrint('Profile update error: $e');
+                        ok = false;
+                      }
 
-                if (context.mounted) {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(ok ? 'Profile updated successfully!' : 'Failed to update profile.'),
-                      backgroundColor: ok ? AppColors.success : AppColors.danger,
-                    ),
-                  );
-                }
-              },
+                      if (ctx.mounted) {
+                        Navigator.of(ctx).pop();
+                      }
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(ok ? 'Profile updated successfully!' : 'Failed to update profile.'),
+                            backgroundColor: ok ? AppColors.success : AppColors.danger,
+                          ),
+                        );
+                      }
+                    },
             ),
           ],
         ),

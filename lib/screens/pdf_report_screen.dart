@@ -1178,23 +1178,23 @@ class _PdfReportScreenState extends State<PdfReportScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text('• $symptomName', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F2C59))),
+                                Expanded(
+                                  child: Text('• $symptomName', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F2C59))),
+                                ),
+                                const SizedBox(width: 8),
                                 Text('Category: ${dbSymptom.category}', style: TextStyle(fontSize: 11, color: Colors.grey[700])),
                               ],
                             ),
                             const SizedBox(height: 6),
-                            Row(
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 4,
                               children: [
-                                Expanded(child: Text('Body Area: ${dbSymptom.bodyLocations.join(", ")}', style: const TextStyle(fontSize: 11))),
-                                Expanded(child: Text('Side: $sideVal', style: const TextStyle(fontSize: 11))),
-                                Expanded(child: Text('Severity: ${mainSeverity.toStringAsFixed(1)}/10', style: const TextStyle(fontSize: 11))),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Expanded(child: Text('Duration: $mainDuration', style: const TextStyle(fontSize: 11))),
-                                Expanded(child: Text('Pattern: $mainPattern', style: const TextStyle(fontSize: 11))),
+                                Text('Body Area: ${dbSymptom.bodyLocations.join(", ")}', style: const TextStyle(fontSize: 11)),
+                                Text('Side: $sideVal', style: const TextStyle(fontSize: 11)),
+                                Text('Severity: ${mainSeverity.toStringAsFixed(1)}/10', style: const TextStyle(fontSize: 11)),
+                                Text('Duration: $mainDuration', style: const TextStyle(fontSize: 11)),
+                                Text('Pattern: $mainPattern', style: const TextStyle(fontSize: 11)),
                               ],
                             ),
                             if (sAnswers.isNotEmpty) ...[

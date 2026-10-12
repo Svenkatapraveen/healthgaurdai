@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import '../firebase_options.dart';
 import '../services/auth_service.dart';
 import '../services/db_service.dart';
 import '../services/firebase_auth_service.dart';
@@ -22,6 +24,11 @@ class AppState extends ChangeNotifier {
 
   Future<void> _initAuth() async {
     try {
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      }
       final user = await _authService.getCurrentUser();
       if (user != null) {
         _currentUser = user;

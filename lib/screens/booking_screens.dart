@@ -995,7 +995,7 @@ class _MyAppointmentsListState extends State<MyAppointmentsList> {
             label: 'Close',
             variant: AppButtonVariant.secondary,
             size: AppButtonSize.small,
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.of(ctx).pop(),
           ),
         ],
       ),

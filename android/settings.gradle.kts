@@ -1,3 +1,5 @@
+System.setProperty("gradle.user.home", "C:/Users/HP/.gradle")
+
 pluginManagement {
     val flutterSdkPath =
         run {

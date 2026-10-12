@@ -111,7 +111,7 @@ class _MedicineReminderScreenState extends State<MedicineReminderScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            initialValue: _frequency,
+                            initialValue: _frequencies.contains(_frequency) ? _frequency : _frequencies.first,
                             items: _frequencies.map((f) {
                               return DropdownMenuItem(value: f, child: Text(f, style: const TextStyle(fontSize: 12)));
                             }).toList(),

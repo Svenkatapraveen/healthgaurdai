@@ -2,9 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_application_1healthgaurdai/data/doctor_database.dart';
 
 void main() {
-  group('Strict Department Doctor Filtering & 48-Doctor Catalog Tests', () {
-    test('Verify exactly 48 doctors exist in doctorDatabase', () {
-      expect(doctorDatabase.length, equals(48));
+  group('Strict Department Doctor Filtering & 78-Doctor Catalog Tests', () {
+    test('Verify exactly 78 doctors exist in doctorDatabase', () {
+      expect(doctorDatabase.length, equals(78));
     });
 
     test('Verify CARDIOLOGY filtering returns ONLY 6 Cardiology doctors', () {
@@ -143,9 +143,9 @@ void main() {
       ]));
     });
 
-    test('Verify all 48 doctors have unique doctor IDs', () {
+    test('Verify all 78 doctors have unique doctor IDs', () {
       final ids = doctorDatabase.map((d) => d.id).toSet();
-      expect(ids.length, equals(48));
+      expect(ids.length, equals(78));
     });
   });
 }
