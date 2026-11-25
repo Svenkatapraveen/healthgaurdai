@@ -9,6 +9,7 @@ import '../data/symptom_database.dart';
 import '../utils/web_download_helper.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
 
 class PdfReportScreen extends StatefulWidget {
   final String? reportId;
@@ -21,6 +22,7 @@ class PdfReportScreen extends StatefulWidget {
 class _PdfReportScreenState extends State<PdfReportScreen> {
   bool _isDownloading = false;
   double _downloadProgress = 0.0;
+  bool _isSharing = false;
 
   AssessmentModel? _loadedAssessment;
   bool _isLoadingReport = true;
@@ -247,11 +249,110 @@ class _PdfReportScreenState extends State<PdfReportScreen> {
   }
 
   Future<void> _shareReport(AssessmentModel assessment, AppUser user) async {
+    if (_isSharing) return;
+    _isSharing = true;
+
+    Uint8List? pdfBytes;
+    final filename = 'HealthGuard_AI_Medical_Report_${assessment.id}.pdf';
+    final box = context.findRenderObject() as RenderBox?;
+    final shareOrigin = (box != null && box.hasSize && box.size.width > 0 && box.size.height > 0)
+        ? box.localToGlobal(Offset.zero) & box.size
+        : null;
+
     try {
-      final pdfBytes = await _generatePdfBytes(assessment, user);
-      final filename = 'HealthGuard_AI_Medical_Report_${assessment.id}.pdf';
-      await downloadPdfFileFromUrl('', filename, bytes: pdfBytes);
-    } catch (_) {}
+      pdfBytes = await _generatePdfBytes(assessment, user);
+      if (pdfBytes.isEmpty) {
+        throw Exception('Generated PDF report is empty.');
+      }
+
+      if (kIsWeb) {
+        // Prevent share_plus from silently downloading the PDF on web when Web Share is unavailable.
+        Share.downloadFallbackEnabled = false;
+      }
+
+      final pdfFile = XFile.fromData(
+        pdfBytes,
+        mimeType: 'application/pdf',
+        name: filename,
+      );
+
+      await Share.shareXFiles(
+        [pdfFile],
+        fileNameOverrides: [filename],
+        subject: 'HealthGuard AI Medical Report - ${user.fullName}',
+        sharePositionOrigin: shareOrigin,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      if (kIsWeb && pdfBytes != null && pdfBytes.isNotEmpty) {
+        await _showWebShareFallbackDialog(filename, pdfBytes, e);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to share report: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    } finally {
+      _isSharing = false;
+    }
+  }
+
+  Future<void> _showWebShareFallbackDialog(
+    String filename,
+    Uint8List pdfBytes,
+    Object error,
+  ) async {
+    final errorMsg = error.toString();
+    final isUnsupported = errorMsg.contains('canShare()') ||
+        errorMsg.contains('NotSupportedError') ||
+        error is NoSuchMethodError;
+
+    final message = isUnsupported
+        ? 'Direct PDF file sharing is not supported by this browser or connection (Web Share for PDF files requires HTTPS or localhost on a supported browser/OS). You can download the PDF report instead and share it manually.'
+        : 'Unable to open the browser share menu ($errorMsg). You can download the PDF report instead and share it manually.';
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('PDF Sharing Unavailable'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+              try {
+                await downloadPdfFileFromUrl('', filename, bytes: pdfBytes);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Report PDF downloaded successfully!'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                }
+              } catch (downloadErr) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to download report: $downloadErr'),
+                      backgroundColor: AppColors.danger,
+                    ),
+                  );
+                }
+              }
+            },
+            icon: const Icon(Icons.file_download_rounded),
+            label: const Text('Download PDF'),
+          ),
+        ],
+      ),
+    );
   }
 
   // ==========================================

@@ -62,7 +62,18 @@ class FirebaseAuthService implements AuthService {
       final cred = await _auth.signInWithEmailAndPassword(email: cleanEmail, password: password);
       if (cred.user != null) {
         await _firestore.collection('users').doc(cred.user!.uid).update({'password': password}).catchError((_) {});
-        return await _fetchUserFromFirestore(cred.user!.uid, cred.user!);
+        final appUser = await _fetchUserFromFirestore(cred.user!.uid, cred.user!);
+        if (appUser != null) return appUser;
+        return AppUser(
+          uid: cred.user!.uid,
+          fullName: cred.user!.displayName ?? cleanEmail.split('@').first,
+          email: cred.user!.email ?? cleanEmail,
+          mobileNumber: '',
+          age: 0,
+          gender: 'Other',
+          role: 'patient',
+          isEmailVerified: cred.user!.emailVerified,
+        );
       }
     } catch (e) {
       if (cleanEmail == 'admin@gmail.com' || cleanEmail.contains('admin')) {
@@ -113,7 +124,21 @@ class FirebaseAuthService implements AuthService {
           );
         }
       }
-      throw Exception(e is FirebaseAuthException ? (e.message ?? 'Login failed') : e.toString());
+      final errStr = e.toString();
+      if (errStr.contains('user-not-found') ||
+          errStr.contains('invalid-credential') ||
+          errStr.contains('wrong-password') ||
+          errStr.contains('JavaScriptObject') ||
+          errStr.contains('FirebaseException')) {
+        throw Exception('Invalid email or password. Please try again.');
+      } else if (errStr.contains('user-disabled')) {
+        throw Exception('Your account has been disabled. Please contact hospital administration.');
+      } else if (errStr.contains('too-many-requests')) {
+        throw Exception('Too many failed attempts. Please try again later.');
+      } else if (errStr.contains('network-request-failed')) {
+        throw Exception('Network error. Please check your internet connection.');
+      }
+      throw Exception(e is FirebaseAuthException ? (e.message ?? 'Login failed') : 'Login failed: $e');
     }
     return null;
   }
@@ -157,8 +182,16 @@ class FirebaseAuthService implements AuthService {
         );
         return _currentUser;
       }
-    } on FirebaseAuthException catch (e) {
-      throw Exception(e.message ?? 'Registration failed');
+    } catch (e) {
+      final errStr = e.toString();
+      if (errStr.contains('email-already-in-use')) {
+        throw Exception('An account with this email already exists.');
+      } else if (errStr.contains('weak-password')) {
+        throw Exception('Password is too weak. Please use at least 6 characters.');
+      } else if (errStr.contains('invalid-email')) {
+        throw Exception('The email address is invalid.');
+      }
+      throw Exception(e is FirebaseAuthException ? (e.message ?? 'Registration failed') : 'Registration failed: ${e.toString()}');
     }
     return null;
   }

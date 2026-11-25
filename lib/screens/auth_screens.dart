@@ -171,10 +171,16 @@ class _LoginScreenState extends State<LoginScreen> {
         String msg = e.toString().replaceAll('Exception: ', '');
         if (msg.contains('user-not-found') || msg.contains('No account found')) {
           msg = 'No account found with this email.';
-        } else if (msg.contains('wrong-password') || msg.contains('invalid-credential') || msg.contains('Incorrect password')) {
+        } else if (msg.contains('wrong-password') ||
+            msg.contains('invalid-credential') ||
+            msg.contains('Incorrect password') ||
+            msg.contains('JavaScriptObject') ||
+            msg.contains('FirebaseException')) {
           msg = 'Invalid email or password. Please try again.';
         } else if (msg.contains('user-disabled')) {
           msg = 'Your account has been disabled. Please contact hospital administration.';
+        } else if (msg.contains('network-request-failed')) {
+          msg = 'Network connection failed. Please check your internet connection.';
         }
         setState(() => _errorMessage = msg);
       }
@@ -588,7 +594,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _errorMessage = 'Registration error: ${e.toString().replaceAll('Exception: ', '')}');
+        String msg = e.toString().replaceAll('Exception: ', '');
+        if (msg.contains('already') || msg.contains('email-already-in-use')) {
+          msg = 'An account with this email already exists.';
+        } else if (msg.contains('JavaScriptObject') || msg.contains('FirebaseException')) {
+          msg = 'Registration error. Please check your information and try again.';
+        }
+        setState(() => _errorMessage = msg);
       }
     }
   }

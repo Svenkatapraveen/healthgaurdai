@@ -92,53 +92,57 @@ class AppState extends ChangeNotifier {
     await _assessmentSubscription?.cancel();
     await _notificationSubscription?.cancel();
 
-    if (_currentUser != null) {
-      final uid = _currentUser!.uid;
-      if (_currentUser!.isAdmin || _currentUser!.role == 'admin') {
-        _appointments = await _dbService.getAllAppointmentsAdmin();
-        _allPatients = await _dbService.getAllPatientsAdmin();
-        _assessments = await _dbService.getAllAssessmentsAdmin();
-        _notifications = await _dbService.getAllNotificationsAdmin();
-        _totalPatientCount = _allPatients.length;
+    try {
+      if (_currentUser != null) {
+        final uid = _currentUser!.uid;
+        if (_currentUser!.isAdmin || _currentUser!.role == 'admin') {
+          try { _appointments = await _dbService.getAllAppointmentsAdmin(); } catch (e) { debugPrint('Admin appts err: $e'); }
+          try { _allPatients = await _dbService.getAllPatientsAdmin(); } catch (e) { debugPrint('Admin patients err: $e'); }
+          try { _assessments = await _dbService.getAllAssessmentsAdmin(); } catch (e) { debugPrint('Admin assessments err: $e'); }
+          try { _notifications = await _dbService.getAllNotificationsAdmin(); } catch (e) { debugPrint('Admin notifs err: $e'); }
+          _totalPatientCount = _allPatients.length;
 
-        final db = _dbService;
-        if (db is FirebaseDbService) {
-          _appointmentSubscription = db.streamAllAppointmentsAdmin().listen((appts) {
-            _appointments = appts;
-            notifyListeners();
-          });
-          _patientSubscription = db.streamAllPatientsAdmin().listen((pts) {
-            _allPatients = pts;
-            _totalPatientCount = pts.length;
-            notifyListeners();
-          });
-          _assessmentSubscription = db.streamAllAssessmentsAdmin().listen((asms) {
-            _assessments = asms;
-            notifyListeners();
-          });
-          _notificationSubscription = db.streamAdminNotifications().listen((notifs) {
-            _notifications = notifs;
-            notifyListeners();
-          });
+          final db = _dbService;
+          if (db is FirebaseDbService) {
+            _appointmentSubscription = db.streamAllAppointmentsAdmin().listen((appts) {
+              _appointments = appts;
+              notifyListeners();
+            }, onError: (e) => debugPrint('streamAllAppointmentsAdmin err: $e'));
+            _patientSubscription = db.streamAllPatientsAdmin().listen((pts) {
+              _allPatients = pts;
+              _totalPatientCount = pts.length;
+              notifyListeners();
+            }, onError: (e) => debugPrint('streamAllPatientsAdmin err: $e'));
+            _assessmentSubscription = db.streamAllAssessmentsAdmin().listen((asms) {
+              _assessments = asms;
+              notifyListeners();
+            }, onError: (e) => debugPrint('streamAllAssessmentsAdmin err: $e'));
+            _notificationSubscription = db.streamAdminNotifications().listen((notifs) {
+              _notifications = notifs;
+              notifyListeners();
+            }, onError: (e) => debugPrint('streamAdminNotifications err: $e'));
+          }
+        } else {
+          try { _assessments = await _dbService.getAssessments(uid); } catch (e) { debugPrint('Assessments err: $e'); }
+          try { _appointments = await _dbService.getAppointments(uid); } catch (e) { debugPrint('Appointments err: $e'); }
+          final db = _dbService;
+          if (db is FirebaseDbService) {
+            _appointmentSubscription = db.streamUserAppointments(uid).listen((appts) {
+              _appointments = appts;
+              notifyListeners();
+            }, onError: (e) => debugPrint('streamUserAppointments err: $e'));
+            _notificationSubscription = db.streamUserNotifications(uid).listen((notifs) {
+              _notifications = notifs;
+              notifyListeners();
+            }, onError: (e) => debugPrint('streamUserNotifications err: $e'));
+          }
+          try { _notifications = await _dbService.getNotifications(uid); } catch (e) { debugPrint('Notifications err: $e'); }
+          try { _reminders = await _dbService.getReminders(uid); } catch (e) { debugPrint('Reminders err: $e'); }
+          _calculateTotalPatients();
         }
-      } else {
-        _assessments = await _dbService.getAssessments(uid);
-        _appointments = await _dbService.getAppointments(uid);
-        final db = _dbService;
-        if (db is FirebaseDbService) {
-          _appointmentSubscription = db.streamUserAppointments(uid).listen((appts) {
-            _appointments = appts;
-            notifyListeners();
-          });
-          _notificationSubscription = db.streamUserNotifications(uid).listen((notifs) {
-            _notifications = notifs;
-            notifyListeners();
-          });
-        }
-        _notifications = await _dbService.getNotifications(uid);
-        _reminders = await _dbService.getReminders(uid);
-        _calculateTotalPatients();
       }
+    } catch (e) {
+      debugPrint('Error in reloadUserData: $e');
     }
     notifyListeners();
   }

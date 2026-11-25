@@ -23,7 +23,6 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
   try {
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
@@ -33,6 +32,7 @@ void main() async {
   } catch (e) {
     debugPrint('Firebase startup notice: $e');
   }
+  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
